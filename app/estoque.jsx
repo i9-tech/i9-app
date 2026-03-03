@@ -122,21 +122,21 @@ export default function Estoque() {
             {/* Cards resumo */}
             <View style={styles.cardRow}>
               <View style={styles.card}>
-                <Text style={styles.cardValue}>R$ 24.750,00</Text>
+                <Text style={styles.cardValue}>R$24.750,00</Text>
                 <Text style={styles.cardLabel}>
                   Valor Total do Estoque
                 </Text>
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.cardValue}>R$ 40.322,00</Text>
+                <Text style={styles.cardValue}>R$40.322,00</Text>
                 <Text style={styles.cardLabel}>
                   Receita Estimada
                 </Text>
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.cardValue}>R$ 15.572,00</Text>
+                <Text style={styles.cardValue}>R$15.572,00</Text>
                 <Text style={styles.cardLabel}>
                   Lucro Estimado de Venda
                 </Text>
@@ -263,12 +263,12 @@ const styles = StyleSheet.create({
 
   cardValue: {
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 12,
     textAlign: "center"
   },
 
   cardLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: "#666",
     textAlign: "center"
   },
