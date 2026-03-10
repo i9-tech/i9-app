@@ -10,7 +10,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Tabela from "../../components/Tabela";
 import DropdownInterativo from "../../components/Dropdown";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../../service/api";
+import { ENDPOINTS } from "../../utils/endpoint";
+import { ROUTERS } from "../../utils/routers";
 
 const setores = [
   { id: "01", nome: "Restaurante" },
@@ -22,15 +25,22 @@ const categorias = [
   { id: "02", nome: "Salgado" },
 ];
 
-const produtos = [
-  { id: "1013", nome: "Barra de chocolaaate", compra: 2, venda: 12, estoque: 50, registro: "01/03/2026", descricao: "Chocolate ao leite 90g" },
-  { id: "1026", nome: "Batata Fritop", compra: 2, venda: 6, estoque: 15, registro: "28/02/2026", descricao: "Salgadinho sabor churrasco" },
-  { id: "1023", nome: "Bis", compra: 2, venda: 10.9, estoque: 0, registro: "25/02/2026", descricao: "Chocolate wafer" },
-  { id: "1030", nome: "Biscoito de polvilho", compra: 2, venda: 5, estoque: 5, registro: "20/02/2026", descricao: "Pacote 100g" },
-  { id: "1031", nome: "Biscoito de polvilho", compra: 2, venda: 5, estoque: 5, registro: "20/02/2026", descricao: "Pacote 100g" },
-];
-
 export default function Estoque() {
+
+  // const token = localStorage.getItem("token");
+  // const funcionario = getFuncionario();
+
+  const token = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMjMuNDU2Ljc4OS0wMCIsImF1dGhvcml0aWVzIjoiUk9MRV9DT1pJTkhBLFJPTEVfRVNUT1FVRSxST0xFX0FURU5ESU1FTlRPLFJPTEVfUFJPUFJJRVRBUklPLFBST1BSSUVUQVJJT19ST0xFX1BMQU5PX0FDRVNTT19EQVNIQk9BUkQiLCJhY2Vzc29TZXRvckNvemluaGEiOnRydWUsImFjZXNzb1NldG9yRXN0b3F1ZSI6dHJ1ZSwiYWNlc3NvU2V0b3JBdGVuZGltZW50byI6dHJ1ZSwicHJvcHJpZXRhcmlvIjp0cnVlLCJhY2Vzc29EYXNoYm9hcmQiOnRydWUsImlhdCI6MTc3MzEwODQxNCwiZXhwIjoxNzc2NzA4NDE0fQ.tqBvm24RNv9dL7zYUaq4mqZ6E-rp39kPgkn24BkxreNbzFysIzSiHBTk-qawWjibvCZR5eMc775KCFcBxpEjkA';
+  const funcionario = {
+    userId: 1
+  }
+
+  const [produtos, setProdutos] = useState([]);
+
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const quantidadePorPagina = 10;
+
   const [setorSelecionado, setSetorSelecionado] = useState("Todos Setores");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("Todas Categorias");
   const [menuAberto, setMenuAberto] = useState(false);
@@ -38,12 +48,21 @@ export default function Estoque() {
 
   const aplicarFiltro = (status) => {
     setFiltroStatus(status);
+    setPagina(0);
     setMenuAberto(false);
   };
+  useEffect(() => {
+    buscarProdutos();
+  }, [pagina]);
+
 
   const produtosFiltrados = produtos.filter((produto) => {
-    if (filtroStatus === "baixo") return produto.estoque > 0 && produto.estoque <= 5;
-    if (filtroStatus === "sem") return produto.estoque === 0;
+    if (filtroStatus === "baixo") {
+      return (
+        (produto.quantidadeMin !== undefined && produto.quantidade < produto.quantidadeMin)
+      );
+    }
+    if (filtroStatus === "sem") return produto.quantidade === 0;
     return true;
   });
 
@@ -59,16 +78,60 @@ export default function Estoque() {
           </View>
         );
 
+  const buscarProdutos = () => {
+    api.get(`${ENDPOINTS.PRODUTOS_PAGINADO}/${funcionario.userId}`, {
+      params: {
+        pagina: pagina,
+        quantidadePorPagina: quantidadePorPagina,
+      },
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+    })
+
+      .then((response) => {
+        setProdutos(response.data.content);
+        setTotalPaginas(response.data.totalPages);
+      })
+
+      .catch((error) => {
+        console.log("Erro ao buscar produtos:", error);
+      });
+
+  };
+
+  const proximaPagina = () => {
+    if (pagina < totalPaginas - 1) {
+      setPagina(pagina + 1);
+    }
+  };
+
+  const paginaAnterior = () => {
+    if (pagina > 0) {
+      setPagina(pagina - 1);
+    }
+  };
+
+
+  const produtosFormatados = produtosFiltrados.map((p) => ({
+    id: p.id,
+    nome: p.nome,
+    compra: p.valorCompra,
+    venda: p.valorUnitario,
+    estoque: p.quantidade,
+    registro: p.dataRegistro,
+    descricao: p.descricao,
+  }));
+
   return (
     <View style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
 
       <ScrollView contentContainerStyle={styles.container}>
 
-        {/* Barra superior */}
         <View style={styles.topBar}>
           <TextInput
-            placeholder="Procurar Produto"
+            placeholder="Procurar Produtos"
             style={styles.searchInput}
           />
 
@@ -94,25 +157,24 @@ export default function Estoque() {
           )}
         </View>
 
-        {/* Dropdowns */}
         <View style={styles.dropdownRow}>
           <DropdownInterativo
             label={setorSelecionado}
             options={["Todos Setores", ...setores.map((s) => s.nome)]}
+            onSelect={setSetorSelecionado}
           />
 
           <DropdownInterativo
             label={categoriaSelecionada}
             options={["Todas Categorias", ...categorias.map((c) => c.nome)]}
+            onSelect={setCategoriaSelecionada}
           />
         </View>
 
-        {/* Botão adicionar */}
         <TouchableOpacity style={styles.addButton}>
           <Text style={styles.addButtonText}>+ Adicionar Produto</Text>
         </TouchableOpacity>
 
-        {/* Cards */}
         <View style={styles.cardRow}>
           <View style={styles.card}>
             <Text style={styles.cardValue}>R$24.750,00</Text>
@@ -130,7 +192,6 @@ export default function Estoque() {
           </View>
         </View>
 
-        {/* Indicadores */}
         <View style={styles.statusRow}>
           <View style={styles.statusItem}>
             <View style={styles.statusIndicator}>
@@ -157,11 +218,31 @@ export default function Estoque() {
           </View>
         </View>
 
-        {/* Tabela */}
         <Tabela
           columns={["Cód.", "Nome", "Compra", "Venda", "Estoque", "Registro", "Descrição", "Ação"]}
-          data={produtosFiltrados}
+          data={produtosFormatados}
         />
+        <View style={styles.paginacao}>
+          <TouchableOpacity
+            style={styles.botaoPagina}
+            onPress={paginaAnterior}
+            disabled={pagina === 0}
+          >
+            <Text style={styles.textoPaginacao}>Anterior</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.textoPagina}>
+            Página {pagina + 1} de {totalPaginas}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.botaoPagina}
+            onPress={proximaPagina}
+            disabled={pagina >= totalPaginas - 1}
+          >
+            <Text style={styles.textoPaginacao}>Próxima</Text>
+          </TouchableOpacity>
+        </View>
 
       </ScrollView>
     </View>
@@ -295,5 +376,27 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: 12,
     color: "#666",
+  },
+
+  paginacao: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 15,
+  },
+
+  botaoPagina: {
+    backgroundColor: "#1E22AA",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+
+  textoPaginacao: {
+    color: "#fff",
+  },
+  textoPagina: {
+    fontWeight: "bold",
+
   },
 });
