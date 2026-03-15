@@ -36,16 +36,28 @@ export default function Estoque() {
   const [menuAberto, setMenuAberto] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState(null);
 
+
   const aplicarFiltro = (status) => {
     setFiltroStatus(status);
     setMenuAberto(false);
+    setPaginaAtual(0);
   };
 
   const produtosFiltrados = produtos.filter((produto) => {
-    if (filtroStatus === "baixo") return produto.estoque > 0 && produto.estoque <= 5;
+    if (filtroStatus === "baixo") return produto.estoque > 0 && produto.estoque <= 2;
     if (filtroStatus === "sem") return produto.estoque === 0;
     return true;
   });
+
+  const [itensPorPagina, setItensPorPagina] = useState(3);
+  const [paginaAtual, setPaginaAtual] = useState(0);
+
+  const totalPaginas = Math.ceil(produtosFiltrados.length / itensPorPagina);
+
+  const inicio = paginaAtual * itensPorPagina;
+  const fim = inicio + itensPorPagina;
+
+  const produtosPaginados = produtosFiltrados.slice(inicio, fim);
 
   const textoFiltro =
     filtroStatus === "baixo"
@@ -156,9 +168,35 @@ export default function Estoque() {
           {/* Tabela */}
           <Tabela
             columns={["Cód.", "Nome", "Compra", "Venda", "Estoque", "Registro", "Descrição", "Ação"]}
-            data={produtosFiltrados}
+            data={produtosPaginados}
           />
 
+          <View style={styles.pagination}>
+
+            <TouchableOpacity disabled={paginaAtual === 0} onPress={() => setPaginaAtual(paginaAtual - 1)}>
+              <Ionicons name="chevron-back" size={25} color={paginaAtual === 0 ? "#aeaeae" : "#1E22AA"} style={{ marginRight: 2 }} />
+            </TouchableOpacity>
+
+
+            {Array.from({ length: totalPaginas }).map((_, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => setPaginaAtual(index)}
+                style={[
+                  styles.pageNumber,
+                  paginaAtual === index && styles.pageActive
+                ]}
+              >
+                <Text style={paginaAtual === index ? [styles.pageTextActive, { fontSize: 16 }] : [styles.pageText, { fontSize: 16 }]}>
+                  {index + 1}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity disabled={paginaAtual === totalPaginas - 1} onPress={() => setPaginaAtual(paginaAtual + 1)}>
+              <Ionicons name="chevron-forward" size={25} color={paginaAtual === totalPaginas - 1 ? "#aeaeae" : "#1E22AA"} style={{ marginRight: 2 }} />
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
         {/* Botão adicionar fixo */}
@@ -227,8 +265,8 @@ const styles = StyleSheet.create({
 
   addButton: {
     position: "absolute",
-    bottom: 24,
-    right: 24,
+    bottom: -23,
+    alignSelf: "center",
     backgroundColor: "#1E22AA",
     width: 56,
     height: 56,
@@ -310,4 +348,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
   },
+
+  pagination: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 15,
+    gap: 6,
+    paddingBottom: 10,
+  },
+
+  pageButton: {
+    fontSize: 18,
+    paddingHorizontal: 10
+  },
+
+  pageNumber: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: "#e6e6e6",
+  },
+
+  pageActive: {
+    backgroundColor: "#1E22AA"
+  },
+
+  pageText: {
+    color: "#333"
+  },
+
+  pageTextActive: {
+    color: "#fff",
+    fontWeight: "bold"
+  }
 });
