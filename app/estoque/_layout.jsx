@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Slot, useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,9 +20,9 @@ export default function Layout() {
     { label: "Perfil", icon: "person-outline", route: "/perfil" },
   ];
 
-  return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      
+  return (      
+      <SafeAreaView style={styles.container} edges={Platform.OS === "ios" ? ["left", "right"] : ["top"] }>
+
       {/* HEADER */}
       <View style={styles.header}>
 

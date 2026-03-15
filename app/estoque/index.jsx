@@ -63,107 +63,109 @@ export default function Estoque() {
     <View style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
 
-      <ScrollView contentContainerStyle={styles.container}>
+      <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.container}>
 
-        {/* Barra superior */}
-        <View style={styles.topBar}>
-          <TextInput
-            placeholder="Procurar Produto"
-            style={styles.searchInput}
-          />
+          {/* Barra superior */}
+          <View style={styles.topBar}>
+            <TextInput
+              placeholder="Procurar Produto"
+              style={styles.searchInput}
+            />
 
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setMenuAberto(!menuAberto)}
-          >
-            <Text style={styles.filterText}>{textoFiltro}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setMenuAberto(!menuAberto)}
+            >
+              <Text style={styles.filterText}>{textoFiltro}</Text>
+            </TouchableOpacity>
 
-          {menuAberto && (
-            <View style={styles.dropdownMenu}>
-              <TouchableOpacity onPress={() => aplicarFiltro("baixo")} style={styles.menuItem}>
-                <Text>⚠️ Estoque Baixo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => aplicarFiltro("sem")} style={styles.menuItem}>
-                <Text>❌ Sem Estoque</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => aplicarFiltro(null)} style={styles.menuItem}>
-                <Text>🔄 Limpar Filtro</Text>
-              </TouchableOpacity>
+            {menuAberto && (
+              <View style={styles.dropdownMenu}>
+                <TouchableOpacity onPress={() => aplicarFiltro("baixo")} style={styles.menuItem}>
+                  <Text>⚠️ Estoque Baixo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => aplicarFiltro("sem")} style={styles.menuItem}>
+                  <Text>❌ Sem Estoque</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => aplicarFiltro(null)} style={styles.menuItem}>
+                  <Text>🔄 Limpar Filtro</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* Dropdowns */}
+          <View style={styles.dropdownRow}>
+            <DropdownInterativo
+              label={setorSelecionado}
+              options={["Todos Setores", ...setores.map((s) => s.nome)]}
+            />
+
+            <DropdownInterativo
+              label={categoriaSelecionada}
+              options={["Todas Categorias", ...categorias.map((c) => c.nome)]}
+            />
+          </View>
+
+          {/* Cards */}
+          <View style={styles.cardRow}>
+            <View style={styles.card}>
+              <Text style={styles.cardValue}>R$24.750,00</Text>
+              <Text style={styles.cardLabel}>Valor Total do Estoque</Text>
             </View>
-          )}
-        </View>
 
-        {/* Dropdowns */}
-        <View style={styles.dropdownRow}>
-          <DropdownInterativo
-            label={setorSelecionado}
-            options={["Todos Setores", ...setores.map((s) => s.nome)]}
+            <View style={styles.card}>
+              <Text style={styles.cardValue}>R$40.322,00</Text>
+              <Text style={styles.cardLabel}>Receita Estimada</Text>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardValue}>R$15.572,00</Text>
+              <Text style={styles.cardLabel}>Lucro Estimado de Venda</Text>
+            </View>
+          </View>
+
+          {/* Indicadores */}
+          <View style={styles.statusRow}>
+            <View style={styles.statusItem}>
+              <View style={styles.statusIndicator}>
+                <View style={[styles.dot, { backgroundColor: "#FFC107" }]} />
+                <Text style={styles.statusNumber}>2</Text>
+              </View>
+              <Text style={styles.statusLabel}>Estoque Baixo</Text>
+            </View>
+
+            <View style={styles.statusItem}>
+              <View style={styles.statusIndicator}>
+                <View style={[styles.dot, { backgroundColor: "red" }]} />
+                <Text style={styles.statusNumber}>0</Text>
+              </View>
+              <Text style={styles.statusLabel}>Sem Estoque</Text>
+            </View>
+
+            <View style={styles.statusItem}>
+              <View style={styles.statusIndicator}>
+                <View style={[styles.dot, { backgroundColor: "green" }]} />
+                <Text style={styles.statusNumber}>4022</Text>
+              </View>
+              <Text style={styles.statusLabel}>Em Estoque</Text>
+            </View>
+          </View>
+
+          {/* Tabela */}
+          <Tabela
+            columns={["Cód.", "Nome", "Compra", "Venda", "Estoque", "Registro", "Descrição", "Ação"]}
+            data={produtosFiltrados}
           />
 
-          <DropdownInterativo
-            label={categoriaSelecionada}
-            options={["Todas Categorias", ...categorias.map((c) => c.nome)]}
-          />
-        </View>
+        </ScrollView>
 
-        {/* Botão adicionar */}
+        {/* Botão adicionar fixo */}
         <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>+ Adicionar Produto</Text>
+          <Text style={styles.addButtonText}>+</Text>
         </TouchableOpacity>
-
-        {/* Cards */}
-        <View style={styles.cardRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardValue}>R$24.750,00</Text>
-            <Text style={styles.cardLabel}>Valor Total do Estoque</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardValue}>R$40.322,00</Text>
-            <Text style={styles.cardLabel}>Receita Estimada</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardValue}>R$15.572,00</Text>
-            <Text style={styles.cardLabel}>Lucro Estimado de Venda</Text>
-          </View>
-        </View>
-
-        {/* Indicadores */}
-        <View style={styles.statusRow}>
-          <View style={styles.statusItem}>
-            <View style={styles.statusIndicator}>
-              <View style={[styles.dot, { backgroundColor: "#FFC107" }]} />
-              <Text style={styles.statusNumber}>2</Text>
-            </View>
-            <Text style={styles.statusLabel}>Estoque Baixo</Text>
-          </View>
-
-          <View style={styles.statusItem}>
-            <View style={styles.statusIndicator}>
-              <View style={[styles.dot, { backgroundColor: "red" }]} />
-              <Text style={styles.statusNumber}>0</Text>
-            </View>
-            <Text style={styles.statusLabel}>Sem Estoque</Text>
-          </View>
-
-          <View style={styles.statusItem}>
-            <View style={styles.statusIndicator}>
-              <View style={[styles.dot, { backgroundColor: "green" }]} />
-              <Text style={styles.statusNumber}>4022</Text>
-            </View>
-            <Text style={styles.statusLabel}>Em Estoque</Text>
-          </View>
-        </View>
-
-        {/* Tabela */}
-        <Tabela
-          columns={["Cód.", "Nome", "Compra", "Venda", "Estoque", "Registro", "Descrição", "Ação"]}
-          data={produtosFiltrados}
-        />
-
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -224,40 +226,52 @@ const styles = StyleSheet.create({
   },
 
   addButton: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
     backgroundColor: "#1E22AA",
-    padding: 14,
-    borderRadius: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
-    marginVertical: 10,
+    justifyContent: "center",
+    elevation: 6,
+    zIndex: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
 
   addButtonText: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "500",
+    fontSize: 28,
+    marginTop: -2,
   },
 
   cardRow: {
-    flexDirection: "row",
     justifyContent: "space-between",
     marginVertical: 10,
+    gap: 10,
   },
 
   card: {
     backgroundColor: "#fff",
-    padding: 15,
+    padding: 20,
     borderRadius: 12,
-    width: "32%",
+    width: "100%",
     elevation: 3,
   },
 
   cardValue: {
     fontWeight: "bold",
-    fontSize: 12,
+    fontSize: 14,
     textAlign: "center",
   },
 
   cardLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#666",
     textAlign: "center",
   },
