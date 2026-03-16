@@ -8,8 +8,8 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Tabela from "../../components/Tabela";
-import DropdownInterativo from "../../components/Dropdown";
+import Tabela from "../../../components/Tabela";
+import DropdownInterativo from "../../../components/Dropdown";
 import { useState } from "react";
 
 const setores = [
@@ -274,11 +274,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     elevation: 6,
-    zIndex: 100,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    zIndex: 999,
   },
 
   addButtonText: {
