@@ -36,72 +36,17 @@ export default function Estoque() {
   const [ordem] = useState("asc");
   const [termoBusca, setTermoBusca] = useState("");
   const [produtos, setProdutos] = useState([]);
+  const [itensPorPagina, setItensPorPagina] = useState(3);
+  const [paginaAtual, setPaginaAtual] = useState(0);
 
-  useEffect(() => {
-  buscarUsuario().then((dados) => setUsuario(dados));
-  recuperarToken().then((t) => setToken(t));
-  
-}, []);
-
-useEffect(() => {
-  // console.log(usuario);
-  // console.log(token);
-  // Aguarda usuario e token estarem prontos
-  if (!usuario || !token) return;
-
-  const termoSemAcento = (termoBusca || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-
-
-  api
-    .get(`${ENDPOINTS.PRODUTOS_PAGINADO}/${usuario.userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: {
-        paginaAtual,
-        itensPorPagina,
-        ordem,
-        termoBusca: termoSemAcento,
-        statusEstoque: filtroStatus,
-        // setorId: setorSelecionado ? Number(setorSelecionado) : undefined,
-        // categoriaId: categoriaSelecionada
-        //   ? Number(categoriaSelecionada)
-        //   : undefined,
-      },
-    })
-    .then((res) => {
-      setProdutos(res.data.content);
-      // console.log(res.data);
-      // console.log(res.data.content);
-    })
-    .catch((err) => {
-      console.error("Erro ao buscar produtos:", err);
-    });
-}, [usuario, token, paginaAtual, termoBusca, filtroStatus, setorSelecionado, categoriaSelecionada]);
+  const inicio = paginaAtual * itensPorPagina;
+  const fim = inicio + itensPorPagina;
 
   const aplicarFiltro = (status) => {
     setFiltroStatus(status);
     setMenuAberto(false);
     setPaginaAtual(0);
   };
-
-  const produtosFiltrados = produtos.filter((produto) => {
-    if (filtroStatus === "baixo")
-      return produto.estoque > 0 && produto.estoque <= 2;
-    if (filtroStatus === "sem") return produto.estoque === 0;
-    return true;
-  });
-
-  const [itensPorPagina, setItensPorPagina] = useState(3);
-  const [paginaAtual, setPaginaAtual] = useState(0);
-
-  const totalPaginas = Math.ceil(produtosFiltrados.length / itensPorPagina);
-
-  const inicio = paginaAtual * itensPorPagina;
-  const fim = inicio + itensPorPagina;
-
-  const produtosPaginados = produtosFiltrados.slice(inicio, fim);
 
   const textoFiltro =
     filtroStatus === "baixo" ? (
@@ -114,6 +59,64 @@ useEffect(() => {
         <Text style={{ marginLeft: 5 }}>Filtros</Text>
       </View>
     );
+
+  useEffect(() => {
+    buscarUsuario().then((dados) => setUsuario(dados));
+    recuperarToken().then((t) => setToken(t));
+  }, []);
+
+  useEffect(() => {
+    // console.log(usuario);
+    // console.log(token);
+    // Aguarda usuario e token estarem prontos
+    if (!usuario || !token) return;
+
+    const termoSemAcento = (termoBusca || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+    api
+      .get(`${ENDPOINTS.PRODUTOS_PAGINADO}/${usuario.userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          paginaAtual,
+          itensPorPagina,
+          ordem,
+          termoBusca: termoSemAcento,
+          statusEstoque: filtroStatus,
+          // setorId: setorSelecionado ? Number(setorSelecionado) : undefined,
+          // categoriaId: categoriaSelecionada
+          //   ? Number(categoriaSelecionada)
+          //   : undefined,
+        },
+      })
+      .then((res) => {
+        setProdutos(res.data.content);
+        // console.log(res.data);
+        // console.log(res.data.content);
+      })
+      .catch((err) => {
+        console.error("Erro ao buscar produtos:", err);
+      });
+  }, [
+    usuario,
+    token,
+    paginaAtual,
+    termoBusca,
+    filtroStatus,
+    setorSelecionado,
+    categoriaSelecionada,
+  ]);
+
+  const produtosFiltrados = produtos.filter((produto) => {
+    if (filtroStatus === "baixo")
+      return produto.estoque > 0 && produto.estoque <= 2;
+    if (filtroStatus === "sem") return produto.estoque === 0;
+    return true;
+  });
+  const totalPaginas = Math.ceil(produtosFiltrados.length / itensPorPagina);
+  const produtosPaginados = produtosFiltrados.slice(inicio, fim);
 
   return (
     <View style={styles.safe}>
