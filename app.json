@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "i9-app",
     "name": "i9-app",
     "slug": "i9-app",
     "version": "1.0.0",
@@ -24,6 +25,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

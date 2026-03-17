@@ -6,14 +6,9 @@ export default function Tabela({ data }) {
     <View style={styles.wrapper}>
       <View style={styles.card}>
         <View style={{ flexDirection: "row" }}>
-          
           {/* COLUNA FIXA */}
           <View style={styles.fixedColumn}>
-            
-            {/* HEADER FIXO */}
             <Text style={styles.fixedHeader}>Nome</Text>
-            
-            {/* LINHAS FIXAS */}
             {data.map((item, index) => (
               <Text
                 key={index}
@@ -26,43 +21,55 @@ export default function Tabela({ data }) {
             ))}
           </View>
 
-          {/* SCROLL HORIZONTAL  */}
+          {/* SCROLL HORIZONTAL */}
           <ScrollView horizontal showsHorizontalScrollIndicator>
             <View>
-              
-              {/* HEADER SCROLL */}
+              {/* HEADER */}
               <View style={styles.headerContainer}>
                 <Text style={styles.headerText}>Cód.</Text>
                 <Text style={styles.headerText}>Compra</Text>
                 <Text style={styles.headerText}>Venda</Text>
                 <Text style={styles.headerText}>Estoque</Text>
+                <Text style={styles.headerText}>Mín / Máx</Text>
                 <Text style={styles.headerText}>Registro</Text>
                 <Text style={styles.headerText}>Descrição</Text>
                 <Text style={styles.headerText}>Ação</Text>
               </View>
 
-              {/* LINHAS SCROLL */}
+              {/* LINHAS */}
               {data.map((item, index) => (
                 <View key={index} style={styles.rowContainer}>
-                  
+                  <Text style={styles.cell}>{item.codigo ?? "-"}</Text>
+
                   <Text style={styles.cell}>
-                    {item.id}
+                    R$ {item.valorCompra?.toFixed(2) ?? "-"}
                   </Text>
 
                   <Text style={styles.cell}>
-                    R$ {item.compra.toFixed(2)}
+                    R$ {item.valorUnitario?.toFixed(2) ?? "-"}
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.cell,
+                      item.quantidade === 0 && { color: "red" },
+                      item.quantidade > 0 &&
+                        item.quantidade <= item.quantidadeMin && {
+                          color: "#FFA000",
+                        },
+                    ]}
+                  >
+                    {item.quantidade ?? "-"}
                   </Text>
 
                   <Text style={styles.cell}>
-                    R$ {item.venda.toFixed(2)}
+                    {item.quantidadeMin} / {item.quantidadeMax}
                   </Text>
 
                   <Text style={styles.cell}>
-                    {item.estoque ?? "-"}
-                  </Text>
-
-                  <Text style={styles.cell}>
-                    {item.registro ?? "-"}
+                    {item.dataRegistro
+                      ? new Date(item.dataRegistro).toLocaleDateString("pt-BR")
+                      : "-"}
                   </Text>
 
                   <Text
@@ -73,16 +80,19 @@ export default function Tabela({ data }) {
                     {item.descricao ?? "-"}
                   </Text>
 
-                  <View style={[styles.cell, { flexDirection: "row", alignItems: "center" }]}>
+                  <View
+                    style={[
+                      styles.cell,
+                      { flexDirection: "row", alignItems: "center" },
+                    ]}
+                  >
                     <Text style={styles.action}>✏️</Text>
                     <Text style={[styles.action, { marginLeft: 12 }]}>🗑️</Text>
                   </View>
                 </View>
               ))}
-
             </View>
           </ScrollView>
-
         </View>
       </View>
     </View>

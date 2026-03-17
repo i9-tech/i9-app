@@ -10,7 +10,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Tabela from "../../../components/Tabela";
 import DropdownInterativo from "../../../components/Dropdown";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import api from "../../../provider/api";
+import { ENDPOINTS } from "../../../utils/endpoints";
+import { buscarUsuario, recuperarToken } from "../../../utils/storage";
 
 const setores = [
   { id: "01", nome: "Restaurante" },
@@ -22,20 +25,60 @@ const categorias = [
   { id: "02", nome: "Salgado" },
 ];
 
-const produtos = [
-  { id: "1013", nome: "Barra de chocolaaate", compra: 2, venda: 12, estoque: 50, registro: "01/03/2026", descricao: "Chocolate ao leite 90g" },
-  { id: "1026", nome: "Batata Fritop", compra: 2, venda: 6, estoque: 15, registro: "28/02/2026", descricao: "Salgadinho sabor churrasco" },
-  { id: "1023", nome: "Bis", compra: 2, venda: 10.9, estoque: 0, registro: "25/02/2026", descricao: "Chocolate wafer" },
-  { id: "1030", nome: "Biscoito de polvilho", compra: 2, venda: 5, estoque: 5, registro: "20/02/2026", descricao: "Pacote 100g" },
-  { id: "1031", nome: "Biscoito de polvilho", compra: 2, venda: 5, estoque: 5, registro: "20/02/2026", descricao: "Pacote 100g" },
-];
-
 export default function Estoque() {
   const [setorSelecionado, setSetorSelecionado] = useState("Todos Setores");
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState("Todas Categorias");
+  const [categoriaSelecionada, setCategoriaSelecionada] =
+    useState("Todas Categorias");
   const [menuAberto, setMenuAberto] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState(null);
+  const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(null);
+  const [ordem] = useState("asc");
+  const [termoBusca, setTermoBusca] = useState("");
+  const [produtos, setProdutos] = useState([]);
 
+  useEffect(() => {
+  buscarUsuario().then((dados) => setUsuario(dados));
+  recuperarToken().then((t) => setToken(t));
+  
+}, []);
+
+useEffect(() => {
+  // console.log(usuario);
+  // console.log(token);
+  // Aguarda usuario e token estarem prontos
+  if (!usuario || !token) return;
+
+  const termoSemAcento = (termoBusca || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+
+  api
+    .get(`${ENDPOINTS.PRODUTOS_PAGINADO}/${usuario.userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: {
+        paginaAtual,
+        itensPorPagina,
+        ordem,
+        termoBusca: termoSemAcento,
+        statusEstoque: filtroStatus,
+        // setorId: setorSelecionado ? Number(setorSelecionado) : undefined,
+        // categoriaId: categoriaSelecionada
+        //   ? Number(categoriaSelecionada)
+        //   : undefined,
+      },
+    })
+    .then((res) => {
+      setProdutos(res.data.content);
+      // console.log(res.data);
+      // console.log(res.data.content);
+    })
+    .catch((err) => {
+      console.error("Erro ao buscar produtos:", err);
+    });
+}, [usuario, token, paginaAtual, termoBusca, filtroStatus, setorSelecionado, categoriaSelecionada]);
 
   const aplicarFiltro = (status) => {
     setFiltroStatus(status);
@@ -44,7 +87,8 @@ export default function Estoque() {
   };
 
   const produtosFiltrados = produtos.filter((produto) => {
-    if (filtroStatus === "baixo") return produto.estoque > 0 && produto.estoque <= 2;
+    if (filtroStatus === "baixo")
+      return produto.estoque > 0 && produto.estoque <= 2;
     if (filtroStatus === "sem") return produto.estoque === 0;
     return true;
   });
@@ -60,16 +104,16 @@ export default function Estoque() {
   const produtosPaginados = produtosFiltrados.slice(inicio, fim);
 
   const textoFiltro =
-    filtroStatus === "baixo"
-      ? "⚠️ Estoque Baixo"
-      : filtroStatus === "sem"
-        ? "❌ Sem Estoque"
-        : (
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Ionicons name="search" size={18} color="#333" />
-            <Text style={{ marginLeft: 5 }}>Filtros</Text>
-          </View>
-        );
+    filtroStatus === "baixo" ? (
+      "⚠️ Estoque Baixo"
+    ) : filtroStatus === "sem" ? (
+      "❌ Sem Estoque"
+    ) : (
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Ionicons name="search" size={18} color="#333" />
+        <Text style={{ marginLeft: 5 }}>Filtros</Text>
+      </View>
+    );
 
   return (
     <View style={styles.safe}>
@@ -77,12 +121,13 @@ export default function Estoque() {
 
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.container}>
-
           {/* Barra superior */}
           <View style={styles.topBar}>
             <TextInput
               placeholder="Procurar Produto"
               style={styles.searchInput}
+              value={termoBusca}
+              onChangeText={setTermoBusca}
             />
 
             <TouchableOpacity
@@ -94,13 +139,22 @@ export default function Estoque() {
 
             {menuAberto && (
               <View style={styles.dropdownMenu}>
-                <TouchableOpacity onPress={() => aplicarFiltro("baixo")} style={styles.menuItem}>
+                <TouchableOpacity
+                  onPress={() => aplicarFiltro("baixo")}
+                  style={styles.menuItem}
+                >
                   <Text>⚠️ Estoque Baixo</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => aplicarFiltro("sem")} style={styles.menuItem}>
+                <TouchableOpacity
+                  onPress={() => aplicarFiltro("sem")}
+                  style={styles.menuItem}
+                >
                   <Text>❌ Sem Estoque</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => aplicarFiltro(null)} style={styles.menuItem}>
+                <TouchableOpacity
+                  onPress={() => aplicarFiltro(null)}
+                  style={styles.menuItem}
+                >
                   <Text>🔄 Limpar Filtro</Text>
                 </TouchableOpacity>
               </View>
@@ -167,16 +221,31 @@ export default function Estoque() {
 
           {/* Tabela */}
           <Tabela
-            columns={["Cód.", "Nome", "Compra", "Venda", "Estoque", "Registro", "Descrição", "Ação"]}
-            data={produtosPaginados}
+            columns={[
+              "Cód.",
+              "Nome",
+              "Compra",
+              "Venda",
+              "Estoque",
+              "Registro",
+              "Descrição",
+              "Ação",
+            ]}
+            data={produtos}
           />
 
           <View style={styles.pagination}>
-
-            <TouchableOpacity disabled={paginaAtual === 0} onPress={() => setPaginaAtual(paginaAtual - 1)}>
-              <Ionicons name="chevron-back" size={25} color={paginaAtual === 0 ? "#aeaeae" : "#1E22AA"} style={{ marginRight: 2 }} />
+            <TouchableOpacity
+              disabled={paginaAtual === 0}
+              onPress={() => setPaginaAtual(paginaAtual - 1)}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={25}
+                color={paginaAtual === 0 ? "#aeaeae" : "#1E22AA"}
+                style={{ marginRight: 2 }}
+              />
             </TouchableOpacity>
-
 
             {Array.from({ length: totalPaginas }).map((_, index) => (
               <TouchableOpacity
@@ -184,17 +253,31 @@ export default function Estoque() {
                 onPress={() => setPaginaAtual(index)}
                 style={[
                   styles.pageNumber,
-                  paginaAtual === index && styles.pageActive
+                  paginaAtual === index && styles.pageActive,
                 ]}
               >
-                <Text style={paginaAtual === index ? [styles.pageTextActive, { fontSize: 16 }] : [styles.pageText, { fontSize: 16 }]}>
+                <Text
+                  style={
+                    paginaAtual === index
+                      ? [styles.pageTextActive, { fontSize: 16 }]
+                      : [styles.pageText, { fontSize: 16 }]
+                  }
+                >
                   {index + 1}
                 </Text>
               </TouchableOpacity>
             ))}
 
-            <TouchableOpacity disabled={paginaAtual === totalPaginas - 1} onPress={() => setPaginaAtual(paginaAtual + 1)}>
-              <Ionicons name="chevron-forward" size={25} color={paginaAtual === totalPaginas - 1 ? "#aeaeae" : "#1E22AA"} style={{ marginRight: 2 }} />
+            <TouchableOpacity
+              disabled={paginaAtual === totalPaginas - 1}
+              onPress={() => setPaginaAtual(paginaAtual + 1)}
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={25}
+                color={paginaAtual === totalPaginas - 1 ? "#aeaeae" : "#1E22AA"}
+                style={{ marginRight: 2 }}
+              />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -361,7 +444,7 @@ const styles = StyleSheet.create({
 
   pageButton: {
     fontSize: 18,
-    paddingHorizontal: 10
+    paddingHorizontal: 10,
   },
 
   pageNumber: {
@@ -372,15 +455,15 @@ const styles = StyleSheet.create({
   },
 
   pageActive: {
-    backgroundColor: "#1E22AA"
+    backgroundColor: "#1E22AA",
   },
 
   pageText: {
-    color: "#333"
+    color: "#333",
   },
 
   pageTextActive: {
     color: "#fff",
-    fontWeight: "bold"
-  }
+    fontWeight: "bold",
+  },
 });
