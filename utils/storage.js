@@ -1,16 +1,24 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
+import { enviroments } from "./enviroments";
+
+const isWeb = enviroments.ambiente === "spring-web";
 
 // ==========================================
-// ARMAZENAMENTO GERAL (AsyncStorage) || dados não sensíveis
+// ARMAZENAMENTO GERAL || dados não sensíveis
 // ==========================================
 
 export const salvarUsuario = async (dadosUsuario) => {
   try {
     const jsonValue = JSON.stringify(dadosUsuario);
-    await AsyncStorage.setItem("funcionario", jsonValue);
-    await AsyncStorage.setItem("logado", "true");
+    if (isWeb) {
+      localStorage.setItem("funcionario", jsonValue);
+      localStorage.setItem("logado", "true");
+    } else {
+      await AsyncStorage.setItem("funcionario", jsonValue);
+      await AsyncStorage.setItem("logado", "true");
+    }
   } catch (error) {
     console.error("Erro ao salvar os dados do usuário:", error);
   }
@@ -18,7 +26,9 @@ export const salvarUsuario = async (dadosUsuario) => {
 
 export const buscarUsuario = async () => {
   try {
-    const jsonValue = await AsyncStorage.getItem("funcionario");
+    const jsonValue = isWeb
+      ? localStorage.getItem("funcionario")
+      : await AsyncStorage.getItem("funcionario");
     return jsonValue != null ? JSON.parse(jsonValue) : null;
   } catch (error) {
     console.error("Erro ao buscar os dados do usuário:", error);
@@ -28,8 +38,10 @@ export const buscarUsuario = async () => {
 
 export const verificarLogin = async () => {
   try {
-    const logado = await AsyncStorage.getItem("logado"); 
-    return logado === "true"; 
+    const logado = isWeb
+      ? localStorage.getItem("logado")
+      : await AsyncStorage.getItem("logado");
+    return logado === "true";
   } catch (error) {
     console.error("Erro ao verificar login:", error);
     return false;
@@ -38,20 +50,29 @@ export const verificarLogin = async () => {
 
 export const removerUsuario = async () => {
   try {
-    await AsyncStorage.removeItem("funcionario");
-    await AsyncStorage.removeItem("logado");
+    if (isWeb) {
+      localStorage.removeItem("funcionario");
+      localStorage.removeItem("logado");
+    } else {
+      await AsyncStorage.removeItem("funcionario");
+      await AsyncStorage.removeItem("logado");
+    }
   } catch (error) {
     console.error("Erro ao remover os dados do usuário:", error);
   }
 };
 
 // ==========================================
-// ARMAZENAMENTO SEGURO (SecureStore) || Tokens, Senhas e dados críticos
+// ARMAZENAMENTO SEGURO || Tokens, Senhas e dados críticos
 // ==========================================
 
 export const salvarToken = async (token) => {
   try {
-    await SecureStore.setItemAsync("token", token);
+    if (isWeb) {
+      localStorage.setItem("token", token);
+    } else {
+      await SecureStore.setItemAsync("token", token);
+    }
   } catch (error) {
     console.error("Erro ao salvar o token seguro:", error);
   }
@@ -59,7 +80,9 @@ export const salvarToken = async (token) => {
 
 export const recuperarToken = async () => {
   try {
-    const token = await SecureStore.getItemAsync("token");
+    const token = isWeb
+      ? localStorage.getItem("token")
+      : await SecureStore.getItemAsync("token");
     return token;
   } catch (error) {
     console.error("Erro ao recuperar o token seguro:", error);
@@ -69,7 +92,11 @@ export const recuperarToken = async () => {
 
 export const deletarToken = async () => {
   try {
-    await SecureStore.deleteItemAsync("token");
+    if (isWeb) {
+      localStorage.removeItem("token");
+    } else {
+      await SecureStore.deleteItemAsync("token");
+    }
   } catch (error) {
     console.error("Erro ao deletar o token seguro:", error);
   }
