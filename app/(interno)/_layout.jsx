@@ -1,15 +1,25 @@
-import { View, Text, Pressable, StyleSheet, Platform} from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Slot, useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 
 export default function Layout() {
-  const titulo = "Estoque";
-  const subTitulo = "xx Itens em Estoque";
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Estados para Título e Subtítulo
+  const [titulo, setTitulo] = useState("App");
+  const [subTitulo, setSubTitulo] = useState("");
+
+  // Injeção das funções globais
+  global.setHeaderTitulo = setTitulo;
+  global.setHeaderSubTitulo = setSubTitulo;
+
   const notificacoes = 3;
 
-  const pathname = usePathname();
-  const router = useRouter();
+  // Lógica para mostrar o botão apenas no estoque
+  const isEstoque = pathname.includes("/estoque");
 
   const navItems = [
     { label: "Dash", icon: "speedometer-outline", route: "/dashboard" },
@@ -20,67 +30,73 @@ export default function Layout() {
     { label: "Perfil", icon: "person-outline", route: "/perfil" },
   ];
 
-  return (      
-      <SafeAreaView style={styles.container} edges={Platform.OS === "ios" ? ["left", "right"] : ["top"] }>
-
+  return (
+    <SafeAreaView
+      style={styles.container}
+      edges={Platform.OS === "ios" ? ["left", "right"] : ["top"]}
+    >
       {/* HEADER */}
       <View style={styles.header}>
-
         <View>
           <Text style={styles.headerText}>{titulo}</Text>
-          <Text style={styles.subText}>{subTitulo}</Text>
+          {subTitulo ? <Text style={styles.subText}>{subTitulo}</Text> : null}
         </View>
 
-        {/* BOTÃO NOTIFICAÇÃO */}
         <Pressable
           style={styles.notificationButton}
           onPress={() => router.push("/notificacoes")}
         >
           <Ionicons name="notifications-outline" size={24} color="#333" />
-
           {notificacoes > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{notificacoes}</Text>
             </View>
           )}
         </Pressable>
-
       </View>
 
-      {/* ÁREA DAS TELAS */}
+      {/* CONTEÚDO */}
       <View style={styles.content}>
         <Slot />
       </View>
 
       {/* NAVBAR */}
       <View style={styles.navbar}>
-        {navItems.map((item) => (
-          <Pressable
-            key={item.label}
-            onPress={() => router.replace(item.route)}
-            style={styles.navItem}
-          >
-            <Ionicons
-              name={item.icon}
-              size={24}
-              color={pathname.includes(item.route) ? "#1E22AA" : "#666"}
-            />
-
-            <Text
-              style={[
-                styles.navLabel,
-                pathname.includes(item.route) && {
-                  color: "#1E22AA",
-                  fontWeight: "bold",
-                },
-              ]}
+        {navItems.map((item) => {
+          const isActive = pathname.includes(item.route);
+          return (
+            <Pressable
+              key={item.label}
+              onPress={() => router.replace(item.route)}
+              style={styles.navItem}
             >
-              {item.label}
-            </Text>
-          </Pressable>
-        ))}
+              <Ionicons
+                name={item.icon}
+                size={24}
+                color={isActive ? "#1E22AA" : "#666"}
+              />
+              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
+      {/* BOTÃO ADICIONAR (+) - FIXO NA FRENTE DA NAVBAR */}
+      {isEstoque && (
+        <TouchableOpacity 
+          style={styles.addButton} 
+          activeOpacity={0.8}
+          onPress={() => {
+            if (global.onPressAddEstoque) {
+              global.onPressAddEstoque();
+            }
+          }}
+        >
+          <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }
@@ -90,33 +106,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-
   header: {
     width: "100%",
     paddingVertical: 14,
     paddingHorizontal: 25,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#e6e6e6",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   headerText: {
     fontSize: 15,
     fontWeight: "600",
+    color: "#000",
   },
-
   subText: {
     fontSize: 12,
     fontWeight: "400",
+    color: "#666",
   },
-
   notificationButton: {
     position: "relative",
   },
-
   badge: {
     position: "absolute",
     top: -4,
@@ -126,17 +139,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 1,
   },
-
   badgeText: {
     color: "#fff",
     fontSize: 10,
     fontWeight: "bold",
   },
-
   content: {
     flex: 1,
   },
-
   navbar: {
     height: 70,
     backgroundColor: "#fff",
@@ -145,17 +155,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#e6e6e6",
-    elevation: 5,
+    zIndex: 1, // Camada inferior
   },
-
   navItem: {
     alignItems: "center",
     justifyContent: "center",
   },
-
   navLabel: {
     fontSize: 12,
     color: "#666",
     marginTop: 2,
+  },
+  navLabelActive: {
+    color: "#1E22AA",
+    fontWeight: "bold",
+  },
+
+  addButton: {
+    position: "absolute",
+    bottom: 50,
+    alignSelf: "center",
+    backgroundColor: "#1E22AA",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 999,
+  },
+
+  addButtonText: {
+    color: "#fff",
+    fontWeight: "500",
+    fontSize: 28,
+    marginTop: -2,
   },
 });

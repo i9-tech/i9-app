@@ -4,12 +4,17 @@ import { buscarUsuario, removerUsuario } from "../../../utils/storage";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 
-export default function Dashboard() {
+export default function Perfil() {
   const [usuario, setUsuario] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
     buscarUsuario().then((dados) => setUsuario(dados));
+  }, []);
+
+  useEffect(() => {
+    global.setHeaderTitulo("Meu Perfil");
+    global.setHeaderSubTitulo("Visualize as informações de sua conta");
   }, []);
 
   return (
@@ -29,11 +34,11 @@ export default function Dashboard() {
         <Pressable
           onPress={async () => {
             await removerUsuario();
-            router.push("/"); 
+            router.push("/");
           }}
-          style={{backgroundColor: "red", padding: 10, borderRadius: 5, marginTop: 20}}
+          style={{ backgroundColor: "red", padding: 10, borderRadius: 5, marginTop: 20 }}
         >
-          <Text style={{color: "white", fontWeight: "bold"}}>SAIR</Text>
+          <Text style={{ color: "white", fontWeight: "bold" }}>SAIR</Text>
         </Pressable>
       </View>
     </View>

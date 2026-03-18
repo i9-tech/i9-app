@@ -4,8 +4,15 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 
-export default function Dashboard() {
+
+export default function Chat() {
+  useEffect(() => {
+    global.setHeaderTitulo("Chatbot I9Tech");
+    global.setHeaderSubTitulo("Assistente inteligente de estoque");
+  }, []);
+
   return (
     <View style={styles.safe}>
       

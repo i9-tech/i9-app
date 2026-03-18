@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 const DropdownInterativo = ({ label, options, onSelect }) => {
   const [visible, setVisible] = useState(false);
-  const [selected, setSelected] = useState(label);
+  const [selected, setSelected] = useState(null);
 
   const handleSelect = (item) => {
     setSelected(item);
@@ -15,7 +15,7 @@ const DropdownInterativo = ({ label, options, onSelect }) => {
   return (
     <View style={{ width: "48%" }}>
       <TouchableOpacity style={styles.dropdown} onPress={() => setVisible(true)}>
-        <Text>{selected}</Text>
+        <Text>{selected?.nome || label}</Text>
         <Ionicons name={visible ? "chevron-up" : "chevron-down"} size={16} color="#333" />
       </TouchableOpacity>
 
@@ -33,13 +33,13 @@ const DropdownInterativo = ({ label, options, onSelect }) => {
           <View style={styles.modalContent}>
             <FlatList
               data={options}
-              keyExtractor={(item, index) => index.toString()}
+              keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.modalItem}
                   onPress={() => handleSelect(item)}
                 >
-                  <Text>{item}</Text>
+                  <Text>{item.nome}</Text>
                 </TouchableOpacity>
               )}
             />
