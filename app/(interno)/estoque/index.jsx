@@ -238,27 +238,26 @@ export default function Estoque() {
           </View>
 
           {/* Dropdowns */}
-          {/* Dropdowns */}
-<View style={styles.dropdownRow}>
-  <View style={{ flex: 1 }}>
-    <DropdownInterativo
-      label="Todos Setores"
-      options={[{ id: null, nome: "Todos Setores" }, ...setores]}
-      onSelect={(item) => {
-        setSetorSelecionado(item);
-        setPaginaAtual(0);
-      }}
-    />
-  </View>
+          <View style={styles.dropdownRow}>
+            <View style={{ flex: 1 }}>
+              <DropdownInterativo
+                label="Todos Setores"
+                options={[{ id: null, nome: "Todos Setores" }, ...setores]}
+                onSelect={(item) => {
+                  setSetorSelecionado(item);
+                  setPaginaAtual(0);
+                }}
+              />
+            </View>
 
-  <View style={{ flex: 1 }}>
-    <DropdownInterativo
-      label={categoriaSelecionada?.nome || "Todas Categorias"}
-      options={[{ id: null, nome: "Todas Categorias" }, ...categorias]}
-      onSelect={(item) => setCategoriaSelecionada(item)}
-    />
-  </View>
-</View>
+            <View style={{ flex: 1 }}>
+              <DropdownInterativo
+                label={categoriaSelecionada?.nome || "Todas Categorias"}
+                options={[{ id: null, nome: "Todas Categorias" }, ...categorias]}
+                onSelect={(item) => setCategoriaSelecionada(item)}
+              />
+            </View>
+          </View>
 
           {/* Cards */}
           <View style={styles.cardRow}>
@@ -432,10 +431,10 @@ const styles = StyleSheet.create({
     padding: 10,
   },
 
- dropdownRow: {
+  dropdownRow: {
     flexDirection: "row",
     marginBottom: 10,
-    gap: 8, // O mesmo gap que você deve usar na topBar para alinhar
+    gap: 8, 
   },
 
   cardRow: {
