@@ -4,13 +4,20 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 
-export default function Dashboard() {
+
+export default function Ajuda() {
+  useEffect(() => {
+    global.setHeaderTitulo("Ajuda");
+    global.setHeaderSubTitulo("Contato com suporte i9Tech");
+  }, []);
+
   return (
     <View style={styles.safe}>
-      
+
       <View style={styles.container}>
-        
+
         <Ionicons
           name="construct-outline"
           size={70}

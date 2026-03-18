@@ -4,13 +4,20 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 
 export default function Dashboard() {
+
+  useEffect(() => {
+    global.setHeaderTitulo("Dashboard");
+    global.setHeaderSubTitulo("Visão geral do sistema");
+  }, []);
+
   return (
     <View style={styles.safe}>
-      
+
       <View style={styles.container}>
-        
+
         <Ionicons
           name="construct-outline"
           size={70}

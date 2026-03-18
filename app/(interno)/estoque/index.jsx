@@ -10,25 +10,30 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Tabela from "../../../components/Tabela";
 import DropdownInterativo from "../../../components/Dropdown";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../../../provider/api";
 import { ENDPOINTS } from "../../../utils/endpoints";
 import { buscarUsuario, recuperarToken } from "../../../utils/storage";
 
-const setores = [
-  { id: "01", nome: "Restaurante" },
-  { id: "02", nome: "Pastelaria" },
-];
-
-const categorias = [
-  { id: "01", nome: "Doce" },
-  { id: "02", nome: "Salgado" },
-];
 
 export default function Estoque() {
-  const [setorSelecionado, setSetorSelecionado] = useState("Todos Setores");
-  const [categoriaSelecionada, setCategoriaSelecionada] =
-    useState("Todas Categorias");
+  useEffect(() => {
+    global.setHeaderTitulo("Estoque");
+    global.setHeaderSubTitulo("Carregando quantidade de itens em estoque");
+  }, []);
+
+
+  // Esta função será disparada pelo botão que está no Layout
+  global.onPressAddEstoque = () => {
+    alert("Botão clicado!");
+  };
+
+  const [setorSelecionado, setSetorSelecionado] = useState(null);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
+
+  const [setores, setSetores] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+
   const [menuAberto, setMenuAberto] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState(null);
   const [usuario, setUsuario] = useState(null);
@@ -36,8 +41,17 @@ export default function Estoque() {
   const [ordem] = useState("asc");
   const [termoBusca, setTermoBusca] = useState("");
   const [produtos, setProdutos] = useState([]);
-  const [itensPorPagina, setItensPorPagina] = useState(3);
+
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [itensPorPagina, setItensPorPagina] = useState(10);
   const [paginaAtual, setPaginaAtual] = useState(0);
+
+  const [quantidadeProdutosEmEstoque, setQuantidadeTotalProdutosEmEstoque] = useState(0);
+  const [valorEstoque, setValorEstoque] = useState(0);
+  const [lucroBruto, setLucroBruto] = useState(0);
+  const [lucroLiquido, setLucroLiquido] = useState(0);
+  const [estoqueBaixo, setEstoqueBaixo] = useState(0);
+  const [semEstoque, setSemEstoque] = useState(0);
 
   const inicio = paginaAtual * itensPorPagina;
   const fim = inicio + itensPorPagina;
@@ -65,10 +79,30 @@ export default function Estoque() {
     recuperarToken().then((t) => setToken(t));
   }, []);
 
+
   useEffect(() => {
-    // console.log(usuario);
-    // console.log(token);
-    // Aguarda usuario e token estarem prontos
+    if (!usuario || !token) return;
+
+    api.get(`${ENDPOINTS.PRODUTOS_QUANTIDADE_DIFERENTE}/${usuario.userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        const totalGeral = res.data;
+        global.setHeaderSubTitulo(`${totalGeral} itens diferentes em estoque`);
+      })
+      .catch((err) => console.error("Erro no Header:", err));
+
+    api.get(`${ENDPOINTS.SETORES}/${usuario.userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((res) => setSetores(res.data));
+
+    api.get(`${ENDPOINTS.CATEGORIAS}/${usuario.userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((res) => setCategorias(res.data));
+
+  }, [usuario, token]);
+
+  useEffect(() => {
     if (!usuario || !token) return;
 
     const termoSemAcento = (termoBusca || "")
@@ -76,47 +110,87 @@ export default function Estoque() {
       .replace(/[\u0300-\u036f]/g, "")
       .trim();
 
-    api
-      .get(`${ENDPOINTS.PRODUTOS_PAGINADO}/${usuario.userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: {
-          paginaAtual,
-          itensPorPagina,
-          ordem,
-          termoBusca: termoSemAcento,
-          statusEstoque: filtroStatus,
-          // setorId: setorSelecionado ? Number(setorSelecionado) : undefined,
-          // categoriaId: categoriaSelecionada
-          //   ? Number(categoriaSelecionada)
-          //   : undefined,
-        },
-      })
+    api.get(`${ENDPOINTS.PRODUTOS_PAGINADO}/${usuario.userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: {
+        pagina: paginaAtual,
+        quantidadePorPagina: itensPorPagina,
+        ordem,
+        termoBusca: termoSemAcento,
+        statusEstoque: filtroStatus,
+        categoriaId: categoriaSelecionada?.id,
+        setorId: setorSelecionado?.id,
+      },
+    })
       .then((res) => {
         setProdutos(res.data.content);
-        // console.log(res.data);
-        // console.log(res.data.content);
+        setTotalPaginas(res.data.totalPages);
+        setQuantidadeProdutosDiferentesEmEstoque(res.data.totalElements);
       })
-      .catch((err) => {
-        console.error("Erro ao buscar produtos:", err);
-      });
+      .catch((err) => console.error(err));
+
   }, [
     usuario,
     token,
     paginaAtual,
     termoBusca,
     filtroStatus,
-    setorSelecionado,
     categoriaSelecionada,
+    setorSelecionado,
+    itensPorPagina,
   ]);
 
-  const produtosFiltrados = produtos.filter((produto) => {
-    if (filtroStatus === "baixo")
-      return produto.estoque > 0 && produto.estoque <= 2;
-    if (filtroStatus === "sem") return produto.estoque === 0;
-    return true;
-  });
-  const totalPaginas = Math.ceil(produtosFiltrados.length / itensPorPagina);
-  const produtosPaginados = produtosFiltrados.slice(inicio, fim);
+
+
+  useEffect(() => {
+    if (!usuario || !token) return;
+
+    api.get(`${ENDPOINTS.PRODUTOS_QUANTIDADE_ESTOQUE}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
+      .then((res) => setQuantidadeTotalProdutosEmEstoque(res.data))
+      .catch((err) => {
+        console.error("Erro ao buscar quantidade de produtos em estoque:", err);
+        toast.error("Erro ao buscar quantidade de produtos em estoque!");
+
+      });
+
+    api.get(`${ENDPOINTS.PRODUTOS_COMPRA}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
+      .then((res) => setValorEstoque(res.data))
+      .catch((err) => {
+        console.error("Erro ao buscar valor de compra de produtos em estoque:", err);
+        toast.error("Erro ao buscar valor de compra de produtos!");
+      });
+
+    api.get(`${ENDPOINTS.PRODUTOS_LUCRO_BRUTO}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
+      .then((res) => setLucroBruto(res.data))
+      .catch((err) => {
+        console.error("Erro ao buscar lucro bruto de produtos em estoque:", err);
+        toast.error("Erro ao buscar lucro bruto de produtos em estoque!");
+      });
+
+    api.get(`${ENDPOINTS.PRODUTOS_LUCRO_LIQUIDO}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
+      .then((res) => setLucroLiquido(res.data))
+      .catch((err) => {
+        console.error("Erro ao buscar lucro liquido de produtos em estoque:", err);
+        toast.error("Erro ao buscar lucro liquido de produtos em estoque!");
+      });
+
+
+    api.get(`${ENDPOINTS.PRODUTOS_ESTOQUE_BAIXO}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
+      .then((res) => setEstoqueBaixo(res.data))
+      .catch((err) => {
+        console.error("Erro ao buscar quantidade estoque baixos produtos em estoque:", err);
+        toast.error("Erro ao buscar quantidade estoque baixos produtos em estoque!");
+      });
+
+    api.get(`${ENDPOINTS.PRODUTOS_SEM_ESTOQUE}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
+      .then((res) => setSemEstoque(res.data))
+      .catch((err) => {
+        console.error("Erro ao buscar quantidade de produtos sem estoque:", err);
+        toast.error("Erro ao buscar quantidade de produtos sem estoque!");
+      });
+
+  }, [usuario, token]);
+
 
   return (
     <View style={styles.safe}>
@@ -155,7 +229,7 @@ export default function Estoque() {
                   <Text>❌ Sem Estoque</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => aplicarFiltro(null)}
+                  onPress={() => aplicarFiltro("em_estoque")}
                   style={styles.menuItem}
                 >
                   <Text>🔄 Limpar Filtro</Text>
@@ -167,30 +241,51 @@ export default function Estoque() {
           {/* Dropdowns */}
           <View style={styles.dropdownRow}>
             <DropdownInterativo
-              label={setorSelecionado}
-              options={["Todos Setores", ...setores.map((s) => s.nome)]}
+              label="Todos Setores"
+              options={[{ id: null, nome: "Todos Setores" }, ...setores]}
+              onSelect={(item) => {
+                setSetorSelecionado(item);
+                setPaginaAtual(0);
+              }}
+
             />
 
             <DropdownInterativo
-              label={categoriaSelecionada}
-              options={["Todas Categorias", ...categorias.map((c) => c.nome)]}
+              label={categoriaSelecionada?.nome || "Todas Categorias"}
+              options={[{ id: null, nome: "Todas Categorias" }, ...categorias]}
+              onSelect={(item) => setCategoriaSelecionada(item)}
             />
           </View>
 
           {/* Cards */}
           <View style={styles.cardRow}>
             <View style={styles.card}>
-              <Text style={styles.cardValue}>R$24.750,00</Text>
+              <Text style={styles.cardValue}>
+                {valorEstoque.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </Text>
               <Text style={styles.cardLabel}>Valor Total do Estoque</Text>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardValue}>R$40.322,00</Text>
+              <Text style={styles.cardValue}>
+                {lucroBruto.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </Text>
               <Text style={styles.cardLabel}>Receita Estimada</Text>
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardValue}>R$15.572,00</Text>
+              <Text style={styles.cardValue}>
+                {lucroLiquido.toLocaleString("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </Text>
               <Text style={styles.cardLabel}>Lucro Estimado de Venda</Text>
             </View>
           </View>
@@ -200,7 +295,7 @@ export default function Estoque() {
             <View style={styles.statusItem}>
               <View style={styles.statusIndicator}>
                 <View style={[styles.dot, { backgroundColor: "#FFC107" }]} />
-                <Text style={styles.statusNumber}>2</Text>
+                <Text style={styles.statusNumber}>{estoqueBaixo || 0}</Text>
               </View>
               <Text style={styles.statusLabel}>Estoque Baixo</Text>
             </View>
@@ -208,7 +303,7 @@ export default function Estoque() {
             <View style={styles.statusItem}>
               <View style={styles.statusIndicator}>
                 <View style={[styles.dot, { backgroundColor: "red" }]} />
-                <Text style={styles.statusNumber}>0</Text>
+                <Text style={styles.statusNumber}>{semEstoque || 0}</Text>
               </View>
               <Text style={styles.statusLabel}>Sem Estoque</Text>
             </View>
@@ -216,25 +311,14 @@ export default function Estoque() {
             <View style={styles.statusItem}>
               <View style={styles.statusIndicator}>
                 <View style={[styles.dot, { backgroundColor: "green" }]} />
-                <Text style={styles.statusNumber}>4022</Text>
+                <Text style={styles.statusNumber}>{quantidadeProdutosEmEstoque || 0}</Text>
               </View>
               <Text style={styles.statusLabel}>Em Estoque</Text>
             </View>
           </View>
 
           {/* Tabela */}
-          <Tabela
-            columns={[
-              "Cód.",
-              "Nome",
-              "Compra",
-              "Venda",
-              "Estoque",
-              "Registro",
-              "Descrição",
-              "Ação",
-            ]}
-            data={produtos}
+          <Tabela data={produtos}
           />
 
           <View style={styles.pagination}>
@@ -285,10 +369,6 @@ export default function Estoque() {
           </View>
         </ScrollView>
 
-        {/* Botão adicionar fixo */}
-        <TouchableOpacity style={styles.addButton}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -307,6 +387,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: "row",
     marginBottom: 10,
+    zIndex: 999,
   },
 
   searchInput: {
@@ -335,8 +416,11 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: "#fff",
     borderRadius: 8,
-    elevation: 4,
-    zIndex: 10,
+    elevation: 10,
+    zIndex: 9999,
+    borderWidth: 1,
+    borderColor: "#e6e6e6",
+    minWidth: 150,
   },
 
   menuItem: {
@@ -347,31 +431,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
-  },
-
-  addButton: {
-    position: "absolute",
-    bottom: -23,
-    alignSelf: "center",
-    backgroundColor: "#1E22AA",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    zIndex: 999,
-  },
-
-  addButtonText: {
-    color: "#fff",
-    fontWeight: "500",
-    fontSize: 28,
-    marginTop: -2,
   },
 
   cardRow: {

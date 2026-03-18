@@ -4,13 +4,20 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 
-export default function Dashboard() {
+export default function Camera() {
+  useEffect(() => {
+    global.setHeaderTitulo("Câmera");
+    global.setHeaderSubTitulo("Escaneie a nota fiscal para adicionar os produtos");
+  }, []);
+
+
   return (
     <View style={styles.safe}>
-      
+
       <View style={styles.container}>
-        
+
         <Ionicons
           name="construct-outline"
           size={70}
