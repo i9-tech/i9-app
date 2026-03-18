@@ -50,7 +50,21 @@ export default function Dashboard() {
   const formatarPT = (iso) => iso ? iso.split('-').reverse().join('/') : "";
 
   useEffect(() => {
+    const agora = new Date();
+
+    const dataFormatada = agora.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+
+    const horaFormatada = agora.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
     global.setHeaderTitulo("Dashboard");
+    global.setHeaderSubTitulo(`${dataFormatada} - ${horaFormatada}`);
   }, []);
 
   useEffect(() => {
@@ -87,7 +101,6 @@ export default function Dashboard() {
       marked[dataFim] = { endingDay: true, color: '#1E22AA', textColor: 'white' };
     }
     setMarkedDates(marked);
-    global.setHeaderSubTitulo(`${formatarPT(dataInicio)} - ${formatarPT(dataFim || dataInicio)}`);
   }, [dataInicio, dataFim]);
 
   useEffect(() => {
@@ -173,10 +186,10 @@ export default function Dashboard() {
     <View style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
       <ScrollView contentContainerStyle={styles.container}>
-        
+
         <View style={styles.filtroContainer}>
-          <Pressable 
-            style={({ pressed }) => [styles.btnFiltroModerno, pressed && { opacity: 0.8 }]} 
+          <Pressable
+            style={({ pressed }) => [styles.btnFiltroModerno, pressed && { opacity: 0.8 }]}
             onPress={() => setModalCalendario(true)}
           >
             <View style={styles.iconeCirculo}>
@@ -191,10 +204,10 @@ export default function Dashboard() {
         </View>
 
         <View style={styles.cardRow}>
-           <CardResumo cor="#6f6df1" titulo="Faturamento Estimado" valor={lucroBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} diferenca={diferencaBruto} isMoeda={true} subtitulo="em relação ao período anterior" mostrarLegendaAnterior={true} />
-           <CardResumo cor="#41c482" titulo="Vendas Realizadas" valor={`${quantidadeTotalVendida} vendas`} diferenca={diferencaVenda} isMoeda={false} subtitulo="em relação ao período anterior" mostrarLegendaAnterior={true} />
-           <CardResumo cor="#f0b731" titulo="Lucro Bruto" valor={lucroLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} subtitulo={`${liquidoMercadoria.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em produtos`} />
-           <CardResumo cor="#C60018" titulo={exibirPratos ? "Prato Mais Vendido" : "Produto Mais Vendido"} valor={exibirPratos ? pratoMaisVendido.nome : produtoMaisVendido.nome} subtitulo={`${exibirPratos ? pratoMaisVendido.quantidadeVendida : produtoMaisVendido.quantidadeVendida} unidades vendidas`} mostrarToggle={true} />
+          <CardResumo cor="#6f6df1" titulo="Faturamento Estimado" valor={lucroBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} diferenca={diferencaBruto} isMoeda={true} subtitulo="em relação ao período anterior" mostrarLegendaAnterior={true} />
+          <CardResumo cor="#41c482" titulo="Vendas Realizadas" valor={`${quantidadeTotalVendida} vendas`} diferenca={diferencaVenda} isMoeda={false} subtitulo="em relação ao período anterior" mostrarLegendaAnterior={true} />
+          <CardResumo cor="#f0b731" titulo="Lucro Bruto" valor={lucroLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} subtitulo={`${liquidoMercadoria.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em produtos`} />
+          <CardResumo cor="#C60018" titulo={exibirPratos ? "Prato Mais Vendido" : "Produto Mais Vendido"} valor={exibirPratos ? pratoMaisVendido.nome : produtoMaisVendido.nome} subtitulo={`${exibirPratos ? pratoMaisVendido.quantidadeVendida : produtoMaisVendido.quantidadeVendida} unidades vendidas`} mostrarToggle={true} />
         </View>
 
         <View style={styles.secaoBranca}>
@@ -242,7 +255,7 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f2f2f2" },
   container: { padding: 16 },
-  
+
   // FILTRO
   filtroContainer: { marginBottom: 10 },
   btnFiltroModerno: { flexDirection: 'row', backgroundColor: '#fff', padding: 10, borderRadius: 8, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, borderWidth: 1, borderColor: '#e6e6e6' },
@@ -258,7 +271,7 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1, paddingHorizontal: 15, justifyContent: "center", paddingVertical: 10 },
   cardValue: { fontWeight: "bold", fontSize: 16, color: "#333", textAlign: 'left' },
   cardLabel: { fontSize: 12, color: "#666", textAlign: 'left' },
-  
+
   containerSubtitulo: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   cardSubtitulo: { fontSize: 11 },
   cardSubtituloBase: { color: "#999" },
