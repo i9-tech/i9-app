@@ -13,7 +13,7 @@ const DropdownInterativo = ({ label, options, onSelect }) => {
   };
 
   return (
-    <View style={{ width: "48%" }}>
+    <View style={{ width: "100%" }}>
       <TouchableOpacity style={styles.dropdown} onPress={() => setVisible(true)}>
         <Text>{selected?.nome || label}</Text>
         <Ionicons name={visible ? "chevron-up" : "chevron-down"} size={16} color="#333" />

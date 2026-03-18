@@ -238,23 +238,27 @@ export default function Estoque() {
           </View>
 
           {/* Dropdowns */}
-          <View style={styles.dropdownRow}>
-            <DropdownInterativo
-              label="Todos Setores"
-              options={[{ id: null, nome: "Todos Setores" }, ...setores]}
-              onSelect={(item) => {
-                setSetorSelecionado(item);
-                setPaginaAtual(0);
-              }}
+          {/* Dropdowns */}
+<View style={styles.dropdownRow}>
+  <View style={{ flex: 1 }}>
+    <DropdownInterativo
+      label="Todos Setores"
+      options={[{ id: null, nome: "Todos Setores" }, ...setores]}
+      onSelect={(item) => {
+        setSetorSelecionado(item);
+        setPaginaAtual(0);
+      }}
+    />
+  </View>
 
-            />
-
-            <DropdownInterativo
-              label={categoriaSelecionada?.nome || "Todas Categorias"}
-              options={[{ id: null, nome: "Todas Categorias" }, ...categorias]}
-              onSelect={(item) => setCategoriaSelecionada(item)}
-            />
-          </View>
+  <View style={{ flex: 1 }}>
+    <DropdownInterativo
+      label={categoriaSelecionada?.nome || "Todas Categorias"}
+      options={[{ id: null, nome: "Todas Categorias" }, ...categorias]}
+      onSelect={(item) => setCategoriaSelecionada(item)}
+    />
+  </View>
+</View>
 
           {/* Cards */}
           <View style={styles.cardRow}>
@@ -395,6 +399,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginRight: 8,
+    width: "50%",
   },
 
   filterButton: {
@@ -403,6 +408,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#e6e6e6",
     paddingHorizontal: 10,
     borderRadius: 8,
+    width: "50%",
   },
 
   filterText: {
@@ -426,10 +432,10 @@ const styles = StyleSheet.create({
     padding: 10,
   },
 
-  dropdownRow: {
+ dropdownRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     marginBottom: 10,
+    gap: 8, // O mesmo gap que você deve usar na topBar para alinhar
   },
 
   cardRow: {
