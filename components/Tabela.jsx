@@ -1,93 +1,92 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Dimensions } from "react-native";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function Tabela({ data }) {
+  // Se não houver dados, não renderiza a estrutura para evitar bugs visuais
+  if (!data || data.length === 0) return null;
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.card}>
         <View style={{ flexDirection: "row" }}>
-          {/* COLUNA FIXA */}
+
+          {/* COLUNA FIXA (NOME) */}
           <View style={styles.fixedColumn}>
             <Text style={styles.fixedHeader}>Nome</Text>
             {data.map((item, index) => (
-              <Text
-                key={index}
-                style={styles.fixedCell}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {item.nome}
-              </Text>
+              <View key={index} style={styles.fixedRowContainer}>
+                <Text style={styles.fixedCell} numberOfLines={1} ellipsizeMode="tail">
+                  {item.nome}
+                </Text>
+              </View>
             ))}
           </View>
 
-          {/* SCROLL HORIZONTAL */}
-          <ScrollView horizontal showsHorizontalScrollIndicator>
-            <View>
-              {/* HEADER */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            <View style={{ flex: 1 }}>
+              {/* HEADER DA TABELA */}
               <View style={styles.headerContainer}>
-                <Text style={styles.headerText}>Cód.</Text>
-                <Text style={styles.headerText}>Compra</Text>
-                <Text style={styles.headerText}>Venda</Text>
-                <Text style={styles.headerText}>Estoque</Text>
-                <Text style={styles.headerText}>Mín / Máx</Text>
-                <Text style={styles.headerText}>Registro</Text>
-                <Text style={styles.headerText}>Descrição</Text>
-                <Text style={styles.headerText}>Ação</Text>
+                <Text style={[styles.headerText, { width: 70 }]}>Cód.</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>Compra</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>Venda</Text>
+                <Text style={[styles.headerText, { width: 80, textAlign: 'center' }]}>Estoque</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>Mín/Máx</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>Registro</Text>
+                {/* A Descrição usa flex: 1 para "sugar" todo o espaço branco restante */}
+                <Text style={[styles.headerText, { flex: 1, minWidth: 200 }]}>Descrição</Text>
+                <Text style={[styles.headerText, { width: 90, textAlign: 'center' }]}>Ação</Text>
               </View>
 
-              {/* LINHAS */}
+              {/* LINHAS DA TABELA */}
               {data.map((item, index) => (
                 <View key={index} style={styles.rowContainer}>
-                  <Text style={styles.cell}>{item.codigo ?? "-"}</Text>
+                  <Text style={[styles.cell, { width: 70 }]}>{item.codigo ?? "-"}</Text>
 
-                  <Text style={styles.cell}>
-                    R$ {item.valorCompra?.toFixed(2) ?? "-"}
+                  <Text style={[styles.cell, { width: 110 }]}>
+                    R$ {item.valorCompra?.toFixed(2) ?? "0.00"}
                   </Text>
 
-                  <Text style={styles.cell}>
-                    R$ {item.valorUnitario?.toFixed(2) ?? "-"}
+                  <Text style={[styles.cell, { width: 110 }]}>
+                    R$ {item.valorUnitario?.toFixed(2) ?? "0.00"}
                   </Text>
 
-                  <Text
-                    style={[
-                      styles.cell,
-                      item.quantidade === 0 && { color: "red" },
-                      item.quantidade > 0 &&
-                        item.quantidade <= item.quantidadeMin && {
-                          color: "#FFA000",
-                        },
-                    ]}
-                  >
-                    {item.quantidade ?? "-"}
+                  <Text style={[
+                    styles.cell,
+                    {
+                      width: 80,
+                      textAlign: 'center',
+                      color: item.quantidade <= (item.quantidadeMin || 0) ? "#FFA000" : "#333",
+                      fontWeight: item.quantidade === 0 ? "bold" : "normal"
+                    }
+                  ]}>
+                    {item.quantidade ?? "0"}
                   </Text>
 
-                  <Text style={styles.cell}>
-                    {item.quantidadeMin} / {item.quantidadeMax}
+                  <Text style={[styles.cell, { width: 110 }]}>
+                    {item.quantidadeMin ?? 0} / {item.quantidadeMax ?? 0}
                   </Text>
 
-                  <Text style={styles.cell}>
-                    {item.dataRegistro
-                      ? new Date(item.dataRegistro).toLocaleDateString("pt-BR")
-                      : "-"}
+                  <Text style={[styles.cell, { width: 110 }]}>
+                    {item.dataRegistro ? new Date(item.dataRegistro).toLocaleDateString("pt-BR") : "-"}
                   </Text>
 
                   <Text
-                    style={styles.cell}
+                    style={[styles.cell, { flex: 1, minWidth: 200 }]}
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
                     {item.descricao ?? "-"}
                   </Text>
 
-                  <View
-                    style={[
-                      styles.cell,
-                      { flexDirection: "row", alignItems: "center" },
-                    ]}
-                  >
-                    <Text style={styles.action}>✏️</Text>
-                    <Text style={[styles.action, { marginLeft: 12 }]}>🗑️</Text>
+                  <View style={[styles.cell, { width: 90, flexDirection: 'row', justifyContent: 'center' }]}>
+                    <Text style={{ fontSize: 16 }}>✏️</Text>
+                    <Text style={{ fontSize: 16, marginLeft: 10 }}>🗑️</Text>
                   </View>
                 </View>
               ))}
@@ -103,63 +102,68 @@ const styles = StyleSheet.create({
   wrapper: {
     marginTop: 12,
     marginBottom: 20,
+    width: '100%',
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#fff",
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    width: '100%',
   },
   fixedColumn: {
     backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    zIndex: 10,
+    borderRightWidth: 1,
+    borderRightColor: "#eee",
   },
   fixedHeader: {
-    width: 160,
+    width: 150,
     paddingVertical: 14,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     backgroundColor: "#2C2FA3",
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 13,
+  },
+  fixedRowContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#eeeeee",
+    height: 52,
+    justifyContent: 'center',
   },
   fixedCell: {
-    width: 160,
-    paddingVertical: 18,
-    paddingHorizontal: 10,
-    fontSize: 14,
+    width: 150,
+    paddingHorizontal: 12,
+    fontSize: 13,
     color: "#333",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
   },
   headerContainer: {
     flexDirection: "row",
     backgroundColor: "#2C2FA3",
+    height: 45,
+    alignItems: 'center',
   },
   headerText: {
-    width: 120,
-    paddingVertical: 14,
     paddingHorizontal: 10,
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 13,
   },
   rowContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    height: 52,
+    alignItems: 'center',
   },
   cell: {
-    width: 120,
-    paddingVertical: 18,
     paddingHorizontal: 10,
-    fontSize: 14,
+    fontSize: 13,
     color: "#333",
-  },
-  action: {
-    color: "#2C2FA3",
-    fontWeight: "bold",
   },
 });

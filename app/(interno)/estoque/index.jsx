@@ -125,7 +125,6 @@ export default function Estoque() {
       .then((res) => {
         setProdutos(res.data.content);
         setTotalPaginas(res.data.totalPages);
-        setQuantidadeProdutosDiferentesEmEstoque(res.data.totalElements);
       })
       .catch((err) => console.error(err));
 
