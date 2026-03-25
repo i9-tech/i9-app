@@ -7,12 +7,19 @@ import {
   TextInput,
   Alert,
   ImageBackground,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Dimensions,
 } from "react-native";
-import { styles } from "../styles";
+import { Ionicons } from "@expo/vector-icons";
 import FUNDO from "../assets/login-fundo.png";
 import api from "../provider/api";
 import { salvarToken, salvarUsuario, verificarLogin } from "../utils/storage";
 import { ENDPOINTS } from "../utils/endpoints";
+
+const { height } = Dimensions.get("window");
 
 export default function Home() {
   const router = useRouter();
@@ -20,6 +27,7 @@ export default function Home() {
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [logado, setLogado] = useState(false);
+  const [ocultarSenha, setOcultarSenha] = useState(true);
 
   useEffect(() => {
     verificarLogin().then((resultado) => setLogado(resultado));
@@ -33,17 +41,14 @@ export default function Home() {
   }, [navigationState?.key, logado]);
 
   function validarUsuario() {
-    console.log("Validando usuário:", usuario);
     if (usuario.trim() === "" || senha.trim() === "") {
       Alert.alert("Erro", "Preencha os campos de usuário e senha!");
       return;
     }
 
-    console.log("indo para chamada");
     api
       .post(ENDPOINTS.LOGIN, { login: usuario, senha: senha })
       .then((res) => {
-        // console.log("Usuário lido:", res.data);
         salvarUsuario(res.data);
         salvarToken(res.data.token);
         router.push("/estoque");
@@ -52,86 +57,212 @@ export default function Home() {
         Alert.alert("Erro", "Usuário ou senha inválidos!");
         console.error("Erro ao fazer login:", err);
       });
-    // console.log("finalizando chamada");
   }
 
   return (
-    <ImageBackground
-      source={FUNDO}
-      style={styles.fundoLogin}
-      resizeMode="cover"
-    >
-      <View
-        style={{
-          height: "32%",
-          width: "100%",
-          justifyContent: "flex-end",
-          alignItems: "center",
-        }}
-      >
-        <Text style={styles.h1}>i9</Text>
-        <Text style={styles.h1}>Boas Vindas</Text>
-        <Text style={styles.h4}>
-          Entre em sua conta e tenha acesso a todas as funcionalidades
-        </Text>
+    <View style={styles.container}>
+      <View style={styles.bgContainer}>
+        <ImageBackground source={FUNDO} style={styles.fundo} resizeMode="cover" />
       </View>
-      <View
-        style={{
-          backgroundColor: "white",
-          height: "30%",
-          width: "80%",
-          justifyContent: "center",
-          alignItems: "center",
-          borderRadius: 10,
-        }}
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View
-          style={{
-            gap: 30,
-            height: "100%",
-            width: "100%",
-            paddingHorizontal: 20,
-            justifyContent: "center",
-          }}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View>
-            <Text>Usuário</Text>
-            <TextInput
-              placeholder="Digite seu nome aqui..."
-              style={styles.inputLogin}
-              value={usuario}
-              onChangeText={setUsuario}
-            />
+          <View style={styles.header}>
+            <Text style={styles.h1}>i9</Text>
+            <Text style={styles.h2}>Boas Vindas</Text>
+            <Text style={styles.h4}>
+              Entre em sua conta e tenha acesso a{"\n"}todas as funcionalidades
+            </Text>
           </View>
-          <View>
-            <Text>Senha</Text>
-            <TextInput
-              style={styles.inputLogin}
-              placeholder="************"
-              secureTextEntry={true} // esconde a senha
-              value={senha}
-              onChangeText={setSenha}
-            />
-          </View>
-          <View style={{ width: "100%", alignItems: "center" }}>
+
+          <View style={styles.card}>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Usuário</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="person-outline" size={18} color="#999" style={styles.iconLeft} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="i9@cpf"
+                  placeholderTextColor="#A0A0A0"
+                  value={usuario}
+                  onChangeText={setUsuario}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Senha</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="********"
+                  placeholderTextColor="#A0A0A0"
+                  secureTextEntry={ocultarSenha}
+                  value={senha}
+                  onChangeText={setSenha}
+                />
+                <Pressable onPress={() => setOcultarSenha(!ocultarSenha)}>
+                  <Ionicons
+                    name={ocultarSenha ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#999"
+                  />
+                </Pressable>
+              </View>
+            </View>
+
             <Pressable onPress={validarUsuario} style={styles.botao}>
-              <Text style={styles.textoBotao}>Entrar</Text>
+              <Text style={styles.textoBotao}>ENTRAR</Text>
             </Pressable>
+
+            <Pressable
+              onPress={() =>
+                Alert.alert(
+                  "Função em desenvolvimento!",
+                  "Em breve você poderá recuperar sua senha"
+                )
+              }
+            >
+              <Text style={styles.linkText}>Você esqueceu sua senha?</Text>
+            </Pressable>
+
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>Não possui conta? </Text>
+              <Pressable onPress={() => Alert.alert("Suporte", "Entre em contato com o suporte I9.")}>
+                <Text style={styles.linkTextFooter}>Contate-nos</Text>
+              </Pressable>
+            </View>
+
           </View>
-        </View>
-      </View>
-      <View>
-        <Pressable
-          onPress={() =>
-            Alert.alert(
-              "Função em desenvolvimento!",
-              "Em breve você poderá recuperar sua senha",
-            )
-          }
-        >
-          <Text>Esqueceu a senha?</Text>
-        </Pressable>
-      </View>
-    </ImageBackground>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F4F4F6",
+  },
+  bgContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  fundo: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingBottom: 30,
+  },
+  
+  header: {
+    alignItems: "center",
+    marginBottom: 50,
+    marginTop: 10,
+  },
+  h1: {
+    fontSize: 50,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: -5,
+  },
+  h2: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 15,
+  },
+  h4: {
+    fontSize: 20,
+    color: "#FFFFFF",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 40,
+  },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 15,
+    paddingHorizontal: 25,
+    paddingVertical: 35,
+    marginHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 12,
+    color: "#888",
+    marginBottom: 8,
+    marginLeft: 2,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F6F8", 
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    height: 50,
+  },
+  iconLeft: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: "#333",
+    outlineStyle: "none", 
+  },
+  botao: {
+    backgroundColor: "#0F14B8",
+    borderRadius: 10,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  textoBotao: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  linkText: {
+    color: "#5B65D6",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 40,
+  },
+  footerText: {
+    color: "#333",
+    fontSize: 12,
+  },
+  linkTextFooter: {
+    color: "#5B65D6",
+    fontSize: 12,
+  },
+});
