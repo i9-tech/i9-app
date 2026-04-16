@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState, useRef } from "react";
+import api_ia from "../../../provider/api_ia";
+import { recuperarToken } from "../../../utils/storage";
 
 const sugestoes = [
   "Qual produto mais vendeu hoje?",
@@ -19,26 +21,32 @@ const sugestoes = [
 ];
 
 export default function Chat() {
+  const [token, setToken] = useState(null);
+
+  useEffect(() => {
+    recuperarToken().then((t) => setToken(t));
+  }, [])
   const [mensagens, setMensagens] = useState([
     {
       id: "1",
       tipo: "bot",
-      texto: "Olá! Posso ajudar você com informações sobre estoque, vendas e recomendações de produtos",
+      texto:
+        "Olá! Posso ajudar você com informações sobre vendas de produtos",
       hora: obterHoraAtual(),
-    }
+    },
   ]);
   const [textoAtual, setTextoAtual] = useState("");
   const scrollViewRef = useRef();
 
   useEffect(() => {
     global.setHeaderTitulo("Chatbot I9Tech");
-    global.setHeaderSubTitulo("Assistente inteligente de estoque");
+    global.setHeaderSubTitulo("Assistente inteligente de vendas");
   }, []);
 
   function obterHoraAtual() {
     const data = new Date();
-    const horas = data.getHours().toString().padStart(2, '0');
-    const minutos = data.getMinutes().toString().padStart(2, '0');
+    const horas = data.getHours().toString().padStart(2, "0");
+    const minutos = data.getMinutes().toString().padStart(2, "0");
     return `${horas}:${minutos}`;
   }
 
@@ -54,17 +62,49 @@ export default function Chat() {
 
     setMensagens((prev) => [...prev, novaMensagemUsuario]);
     setTextoAtual("");
+    enviarMensagemIA(novaMensagemUsuario.texto);
 
-    setTimeout(() => {
+    // setTimeout(() => {
+    //   const mensagemBot = {
+    //     id: (Date.now() + 1).toString(),
+    //     tipo: "bot",
+    //     texto:
+    //       "Olá, obrigado pela mensagem! O chat ainda está em desenvolvimento, tente novamente mais tarde!",
+    //     hora: obterHoraAtual(),
+    //   };
+    //   setMensagens((prev) => [...prev, mensagemBot]);
+    // }, 800);
+  }
+
+  const enviarMensagemIA = async (texto) => {
+    // Aqui você pode integrar com a API do ChatGPT ou outro serviço de IA
+    try {
+
+      const response = await api_ia.post("/api/chat", {
+        id_usuario: "1",
+        pergunta: texto,
+        token: token,
+      });
+
       const mensagemBot = {
         id: (Date.now() + 1).toString(),
         tipo: "bot",
-        texto: "Olá, obrigado pela mensagem! O chat ainda está em desenvolvimento, tente novamente mais tarde!",
+        texto: response.data.resposta,
         hora: obterHoraAtual(),
       };
       setMensagens((prev) => [...prev, mensagemBot]);
-    }, 800);
-  }
+    } catch (err) {
+      console.log("Erro: ", err);
+      const mensagemBot = {
+        id: (Date.now() + 1).toString(),
+        tipo: "bot",
+        texto:
+          "Desculpe, ocorreu um erro ao processar sua pergunta. Por favor, tente novamente.",
+        hora: obterHoraAtual(),
+      };
+      setMensagens((prev) => [...prev, mensagemBot]);
+    }
+  };
 
   function limparHistorico() {
     setMensagens([
@@ -73,21 +113,21 @@ export default function Chat() {
         tipo: "bot",
         texto: "Histórico limpo. Como posso ajudar agora?",
         hora: obterHoraAtual(),
-      }
+      },
     ]);
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.safe} 
+    <KeyboardAvoidingView
+      style={styles.safe}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.sugestoesContainer}>
         <Text style={styles.sugestoesLabel}>Sugestões:</Text>
         <View style={styles.chipsWrapper}>
           {sugestoes.map((item, index) => (
-            <Pressable 
-              key={index} 
+            <Pressable
+              key={index}
               style={styles.chip}
               onPress={() => enviarMensagem(item)}
             >
@@ -97,11 +137,13 @@ export default function Chat() {
         </View>
       </View>
 
-      <ScrollView 
-        style={styles.chatContainer} 
+      <ScrollView
+        style={styles.chatContainer}
         contentContainerStyle={styles.chatContent}
         ref={scrollViewRef}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() =>
+          scrollViewRef.current?.scrollToEnd({ animated: true })
+        }
       >
         {mensagens.map((msg) => {
           const isBot = msg.tipo === "bot";
@@ -146,8 +188,16 @@ export default function Chat() {
 
           <View style={styles.divider} />
 
-          <Pressable style={styles.iconButton} onPress={() => enviarMensagem(textoAtual)}>
-            <Ionicons name="send" size={18} color="#FFF" style={{ marginLeft: 3 }} />
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => enviarMensagem(textoAtual)}
+          >
+            <Ionicons
+              name="send"
+              size={18}
+              color="#FFF"
+              style={{ marginLeft: 3 }}
+            />
           </Pressable>
         </View>
       </View>
