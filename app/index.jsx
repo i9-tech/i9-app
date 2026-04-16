@@ -18,6 +18,8 @@ import FUNDO from "../assets/login-fundo.png";
 import api from "../provider/api";
 import { salvarToken, salvarUsuario, verificarLogin } from "../utils/storage";
 import { ENDPOINTS } from "../utils/endpoints";
+import ModalEsqueceuSenha from "../components/ModalEsqueceuSenha";
+import ModalEsqueceuSenhaSucesso from "../components/ModalEsqueceuSenhaSucesso";
 
 const { height } = Dimensions.get("window");
 
@@ -28,6 +30,9 @@ export default function Home() {
   const [senha, setSenha] = useState("");
   const [logado, setLogado] = useState(false);
   const [ocultarSenha, setOcultarSenha] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalSenhaVisible, setModalSenhaVisible] = useState(false);
+  const [modalSucessoVisible, setModalSucessoVisible] = useState(false);
 
   useEffect(() => {
     verificarLogin().then((resultado) => setLogado(resultado));
@@ -59,6 +64,24 @@ export default function Home() {
       });
   }
 
+  function handleRecuperarSenha(cpf) {
+    console.log("CPF enviado:", cpf);
+
+    setModalSenhaVisible(false);
+    setModalSucessoVisible(true);
+
+    // Exemplo real com API:
+    /*
+    api.post(ENDPOINTS.RECUPERAR_SENHA, { cpf })
+      .then(() => {
+        setModalSenhaVisible(false);
+        setModalSucessoVisible(true);
+      })
+      .catch(() => {
+        Alert.alert("Erro", "Não foi possível recuperar a senha.");
+      });
+    */
+  }
   return (
     <View style={styles.container}>
       <View style={styles.bgContainer}>
@@ -83,7 +106,7 @@ export default function Home() {
           </View>
 
           <View style={styles.card}>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Usuário</Text>
               <View style={styles.inputContainer}>
@@ -121,17 +144,10 @@ export default function Home() {
             </View>
 
             <Pressable onPress={validarUsuario} style={styles.botao}>
-              <Text style={styles.textoBotao}>ENTRAR</Text>
+              <Text style={styles.textoBotao}>Entrar</Text>
             </Pressable>
 
-            <Pressable
-              onPress={() =>
-                Alert.alert(
-                  "Função em desenvolvimento!",
-                  "Em breve você poderá recuperar sua senha"
-                )
-              }
-            >
+            <Pressable onPress={() => setModalSenhaVisible(true)}>
               <Text style={styles.linkText}>Você esqueceu sua senha?</Text>
             </Pressable>
 
@@ -145,6 +161,18 @@ export default function Home() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ModalEsqueceuSenha
+        visible={modalSenhaVisible}
+        onClose={() => setModalSenhaVisible(false)}
+        onSubmit={handleRecuperarSenha}
+        disabled={false}
+      />
+
+      <ModalEsqueceuSenhaSucesso
+        visible={modalSucessoVisible}
+        onClose={() => setModalSucessoVisible(false)}
+      />
     </View>
   );
 }
@@ -168,7 +196,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 30,
   },
-  
+
   header: {
     alignItems: "center",
     marginBottom: 50,
@@ -218,7 +246,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F6F8", 
+    backgroundColor: "#F5F6F8",
     borderRadius: 10,
     paddingHorizontal: 15,
     height: 50,
@@ -230,7 +258,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: "#333",
-    outlineStyle: "none", 
+    outlineStyle: "none",
   },
   botao: {
     backgroundColor: "#0F14B8",
@@ -251,7 +279,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
   },
-  
+
   footerRow: {
     flexDirection: "row",
     justifyContent: "center",
