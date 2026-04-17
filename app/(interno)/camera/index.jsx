@@ -28,19 +28,19 @@ export default function Camera() {
   if (!permissao.granted && modalVisivel) {
     return (
       <Modal titulo="Permissão Necessária">
-          <View style={styles.modalContent}>
-            <Text style={styles.textoPermissaoModal}>
-              Precisamos da sua permissão para acessar a câmera do dispositivo e ler as notas fiscais pelo aplicativo.
-            </Text>
-            
-            <Pressable style={styles.botaoPrincipal} onPress={() => {
-              solicitarPermissao();
-              setModalVisivel(false);
-            }}>
-              <Text style={styles.textoBotaoPrincipal}>Conceder Permissão</Text>
-            </Pressable>
-          </View>
-        </Modal>
+        <View style={styles.modalContent}>
+          <Text style={styles.textoPermissaoModal}>
+            Precisamos da sua permissão para acessar a câmera do dispositivo e ler as notas fiscais pelo aplicativo.
+          </Text>
+
+          <Pressable style={styles.botaoPrincipal} onPress={() => {
+            solicitarPermissao();
+            setModalVisivel(false);
+          }}>
+            <Text style={styles.textoBotaoPrincipal}>Conceder Permissão</Text>
+          </Pressable>
+        </View>
+      </Modal>
     );
   }
 
@@ -60,7 +60,7 @@ export default function Camera() {
 
   return (
     <View style={styles.safe}>
-      
+
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Ionicons name="camera" size={22} color="#111" />
@@ -77,12 +77,19 @@ export default function Camera() {
           style={StyleSheet.absoluteFillObject}
           facing="back"
           barcodeScannerSettings={{
-            barcodeTypes: ["qr"], 
+            barcodeTypes: ["qr"],
           }}
           onBarcodeScanned={escaneado ? undefined : aoEscanearCodigo}
         />
       </View>
 
+      <Pressable style={styles.uploadBox}>
+        <Ionicons name="cloud-upload-outline" size={28} color="#0F14B8" />
+        <Text style={styles.uploadTitle}>Enviar nota fiscal</Text>
+        <Text style={styles.uploadSubtitle}>
+          Toque para selecionar PDF ou imagem
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -129,11 +136,11 @@ const styles = StyleSheet.create({
   },
   cameraPlaceholder: {
     flex: 1,
-    backgroundColor: "#EBEBEB", 
+    backgroundColor: "#EBEBEB",
     justifyContent: "center",
     alignItems: "center",
   },
-  
+
   modalContent: {
     paddingVertical: 10,
     alignItems: "center",
@@ -146,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   botaoPrincipal: {
-    backgroundColor: "#0F14B8", 
+    backgroundColor: "#0F14B8",
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 10,
@@ -157,5 +164,29 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  uploadBox: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#0F14B8",
+    borderRadius: 16,
+    paddingVertical: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F9FAFF",
+    bottom: 10,
+  },
+
+  uploadTitle: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0F14B8",
+  },
+
+  uploadSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 4,
   },
 });

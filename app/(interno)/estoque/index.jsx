@@ -203,7 +203,10 @@ export default function Estoque() {
               placeholder="Procurar Produto"
               style={styles.searchInput}
               value={termoBusca}
-              onChangeText={setTermoBusca}
+              onChangeText={(text) => {
+                setTermoBusca(text);
+                setPaginaAtual(0);
+              }}
             />
 
             <TouchableOpacity
@@ -434,7 +437,7 @@ const styles = StyleSheet.create({
   dropdownRow: {
     flexDirection: "row",
     marginBottom: 10,
-    gap: 8, 
+    gap: 8,
   },
 
   cardRow: {
