@@ -1,5 +1,5 @@
 import { useRootNavigationState, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Pressable,
   View,
@@ -20,12 +20,14 @@ import { salvarToken, salvarUsuario, verificarLogin } from "../utils/storage";
 import { ENDPOINTS } from "../utils/endpoints";
 import ModalEsqueceuSenha from "../components/ModalEsqueceuSenha";
 import ModalEsqueceuSenhaSucesso from "../components/ModalEsqueceuSenhaSucesso";
+import Toast from "../components/Toast";
 
 const { height } = Dimensions.get("window");
 
 export default function Home() {
   const router = useRouter();
   const navigationState = useRootNavigationState();
+
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [logado, setLogado] = useState(false);
@@ -33,55 +35,133 @@ export default function Home() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalSenhaVisible, setModalSenhaVisible] = useState(false);
   const [modalSucessoVisible, setModalSucessoVisible] = useState(false);
+  const [isEnviandoSenha, setIsEnviandoSenha] = useState(false);
+
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("info");
 
   useEffect(() => {
-    verificarLogin().then((resultado) => setLogado(resultado));
+    verificarLogin().then(setLogado);
   }, []);
 
   useEffect(() => {
     if (!navigationState?.key) return;
-    if (logado) {
-      router.push("/estoque");
-    }
+    if (logado) router.push("/estoque");
   }, [navigationState?.key, logado]);
 
-  function validarUsuario() {
-    if (usuario.trim() === "" || senha.trim() === "") {
-      Alert.alert("Erro", "Preencha os campos de usuário e senha!");
+  /* =========================
+     TOAST
+  ========================= */
+
+  const showToast = useCallback((type, message, duration = 2500) => {
+    setToastType(type);
+    setToastMessage(message);
+    setToastVisible(true);
+
+    if (type !== "loading") {
+      setTimeout(() => setToastVisible(false), duration);
+    }
+  }, []);
+
+  /* =========================
+     EXECUTOR PADRÃO
+  ========================= */
+
+  const executarComToast = useCallback(
+    async (fn, config) => {
+      const {
+        loadingMsg = "Carregando...",
+        successMsg = "Sucesso!",
+        errorMsg = "Erro ao processar!",
+        minTime = 800,
+        onSuccess,
+      } = config;
+
+      const startTime = Date.now();
+      showToast("loading", loadingMsg);
+
+      try {
+        const result = await fn();
+
+        const elapsed = Date.now() - startTime;
+        if (elapsed < minTime) {
+          await new Promise((res) => setTimeout(res, minTime - elapsed));
+        }
+
+        showToast("success", successMsg);
+
+        onSuccess?.(result);
+
+        return result;
+      } catch (error) {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < minTime) {
+          await new Promise((res) => setTimeout(res, minTime - elapsed));
+        }
+
+        showToast("error", errorMsg);
+        throw error;
+      }
+    },
+    [showToast]
+  );
+
+  /* =========================
+     LOGIN
+  ========================= */
+
+  const validarUsuario = useCallback(async () => {
+    if (!usuario.trim() || !senha.trim()) {
+      showToast("error", "Preencha usuário e senha!");
       return;
     }
 
-    api
-      .post(ENDPOINTS.LOGIN, { login: usuario, senha: senha })
-      .then((res) => {
-        salvarUsuario(res.data);
-        salvarToken(res.data.token);
-        router.push("/estoque");
-      })
-      .catch((err) => {
-        Alert.alert("Erro", "Usuário ou senha inválidos!");
-        console.error("Erro ao fazer login:", err);
-      });
-  }
+    try {
+      await executarComToast(
+        () => api.post(ENDPOINTS.LOGIN, { login: usuario, senha }),
+        {
+          loadingMsg: "Entrando...",
+          successMsg: "Login realizado com sucesso!",
+          errorMsg: "Usuário ou senha inválidos!",
+          onSuccess: (res) => {
+            salvarUsuario(res.data);
+            salvarToken(res.data.token);
+            router.push("/estoque");
+          },
+        }
+      );
+    } catch (err) {
+      console.error("Erro ao fazer login:", err);
+    }
+  }, [usuario, senha, executarComToast, showToast]);
 
-  function handleRecuperarSenha(cpf) {
-    console.log("CPF enviado:", cpf);
+  /* =========================
+     RECUPERAR SENHA
+  ========================= */
 
-    setModalSenhaVisible(false);
-    setModalSucessoVisible(true);
+  const handleRecuperarSenha = useCallback(
+    async (cpf) => {
+      try {
+        await executarComToast(
+          () =>
+            api.post(ENDPOINTS.RECUPERAR_SENHA_ESQUECIDA, { cpf }),
+          {
+            loadingMsg: "Enviando e-mail...",
+            successMsg: "E-mail enviado com sucesso!",
+            errorMsg:
+              "Erro ao enviar e-mail! Cadastro não encontrado ou desativado!",
+            onSuccess: () => {
+              setModalSenhaVisible(false);
+              setModalSucessoVisible(true);
+            },
+          }
+        );
+      } catch { }
+    },
+    [executarComToast]
+  );
 
-    // Exemplo real com API:
-    /*
-    api.post(ENDPOINTS.RECUPERAR_SENHA, { cpf })
-      .then(() => {
-        setModalSenhaVisible(false);
-        setModalSucessoVisible(true);
-      })
-      .catch(() => {
-        Alert.alert("Erro", "Não foi possível recuperar a senha.");
-      });
-    */
-  }
   return (
     <View style={styles.container}>
       <View style={styles.bgContainer}>
@@ -106,7 +186,6 @@ export default function Home() {
           </View>
 
           <View style={styles.card}>
-
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Usuário</Text>
               <View style={styles.inputContainer}>
@@ -133,7 +212,7 @@ export default function Home() {
                   value={senha}
                   onChangeText={setSenha}
                 />
-                <Pressable onPress={() => setOcultarSenha(!ocultarSenha)}>
+                <Pressable onPress={() => setOcultarSenha((prev) => !prev)}>
                   <Ionicons
                     name={ocultarSenha ? "eye-off-outline" : "eye-outline"}
                     size={20}
@@ -157,7 +236,6 @@ export default function Home() {
                 <Text style={styles.linkTextFooter}>Contate-nos</Text>
               </Pressable>
             </View>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -172,6 +250,12 @@ export default function Home() {
       <ModalEsqueceuSenhaSucesso
         visible={modalSucessoVisible}
         onClose={() => setModalSucessoVisible(false)}
+      />
+
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
       />
     </View>
   );

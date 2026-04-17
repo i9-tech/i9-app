@@ -58,4 +58,5 @@ export const ENDPOINTS = {
     VENDA_KPIS: 'vendas/kpis',
     GERENCIAMENTO_PLANO_EMPRESA: '/gerenciamento-planos/empresa',
     PLANOS_TEMPLATES: "/plano-templates",
+    RECUPERAR_SENHA_ESQUECIDA: "/recuperacoes/esqueceu-senha",
 }
