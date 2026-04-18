@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import FUNDO from "../assets/login-fundo.png";
@@ -21,8 +20,6 @@ import { ENDPOINTS } from "../utils/endpoints";
 import ModalEsqueceuSenha from "../components/ModalEsqueceuSenha";
 import ModalEsqueceuSenhaSucesso from "../components/ModalEsqueceuSenhaSucesso";
 import Toast from "../components/Toast";
-
-const { height } = Dimensions.get("window");
 
 export default function Home() {
   const router = useRouter();
@@ -51,23 +48,20 @@ export default function Home() {
   }, [navigationState?.key, logado]);
 
   /* =========================
-     TOAST
+      LOGICA DE TOAST (PRESERVADA)
   ========================= */
-
   const showToast = useCallback((type, message, duration = 2500) => {
     setToastType(type);
     setToastMessage(message);
     setToastVisible(true);
-
     if (type !== "loading") {
       setTimeout(() => setToastVisible(false), duration);
     }
   }, []);
 
   /* =========================
-     EXECUTOR PADRÃO
+      EXECUTOR PADRÃO (PRESERVADO)
   ========================= */
-
   const executarComToast = useCallback(
     async (fn, config) => {
       const {
@@ -88,18 +82,14 @@ export default function Home() {
         if (elapsed < minTime) {
           await new Promise((res) => setTimeout(res, minTime - elapsed));
         }
-
         showToast("success", successMsg);
-
         onSuccess?.(result);
-
         return result;
       } catch (error) {
         const elapsed = Date.now() - startTime;
         if (elapsed < minTime) {
           await new Promise((res) => setTimeout(res, minTime - elapsed));
         }
-
         showToast("error", errorMsg);
         throw error;
       }
@@ -108,9 +98,8 @@ export default function Home() {
   );
 
   /* =========================
-     LOGIN
+      LOGIN (PRESERVADO)
   ========================= */
-
   const validarUsuario = useCallback(async () => {
     if (!usuario.trim() || !senha.trim()) {
       showToast("error", "Preencha usuário e senha!");
@@ -137,15 +126,13 @@ export default function Home() {
   }, [usuario, senha, executarComToast, showToast]);
 
   /* =========================
-     RECUPERAR SENHA
+      RECUPERAR SENHA (PRESERVADO)
   ========================= */
-
   const handleRecuperarSenha = useCallback(
     async (cpf) => {
       try {
         await executarComToast(
-          () =>
-            api.post(ENDPOINTS.RECUPERAR_SENHA_ESQUECIDA, { cpf }),
+          () => api.post(ENDPOINTS.RECUPERAR_SENHA_ESQUECIDA, { cpf }),
           {
             loadingMsg: "Enviando e-mail...",
             successMsg: "E-mail enviado com sucesso!",
@@ -163,11 +150,7 @@ export default function Home() {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.bgContainer}>
-        <ImageBackground source={FUNDO} style={styles.fundo} resizeMode="cover" />
-      </View>
-
+    <ImageBackground source={FUNDO} style={styles.fundoRaiz} resizeMode="cover">
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -189,7 +172,7 @@ export default function Home() {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Usuário</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color="#999" style={styles.iconLeft} />
+                <Ionicons name="person-outline" size={18} color="#999" style={{ marginRight: 10 }} />
                 <TextInput
                   style={styles.input}
                   placeholder="i9@cpf"
@@ -257,22 +240,12 @@ export default function Home() {
         message={toastMessage}
         type={toastType}
       />
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F4F4F6",
-  },
-  bgContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-  },
-  fundo: {
+  fundoRaiz: {
     flex: 1,
   },
   scrollContent: {
@@ -280,101 +253,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 30,
   },
-
   header: {
     alignItems: "center",
-    marginBottom: 50,
-    marginTop: 10,
+    marginBottom: 40,
   },
-  h1: {
-    fontSize: 50,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    marginBottom: -5,
-  },
-  h2: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    marginBottom: 15,
-  },
-  h4: {
-    fontSize: 20,
-    color: "#FFFFFF",
-    textAlign: "center",
-    lineHeight: 22,
-    paddingHorizontal: 40,
-  },
-
+  h1: { fontSize: 60, fontWeight: "bold", color: "#FFFFFF" },
+  h2: { fontSize: 32, fontWeight: "bold", color: "#FFFFFF", marginBottom: 10 },
+  h4: { fontSize: 16, color: "#FFFFFF", textAlign: "center", paddingHorizontal: 40 },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 15,
+    borderRadius: 20,
     paddingHorizontal: 25,
     paddingVertical: 35,
     marginHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
     elevation: 5,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 12,
-    color: "#888",
-    marginBottom: 8,
-    marginLeft: 2,
-  },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 13, color: "#666", marginBottom: 8 },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F6F8",
-    borderRadius: 10,
+    backgroundColor: "#F0F1F5",
+    borderRadius: 12,
     paddingHorizontal: 15,
-    height: 50,
+    height: 55,
   },
-  iconLeft: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: "#333",
-    outlineStyle: "none",
-  },
+  input: { flex: 1, fontSize: 16, color: "#333" },
   botao: {
     backgroundColor: "#0F14B8",
-    borderRadius: 10,
-    height: 50,
+    borderRadius: 12,
+    height: 55,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 10,
     marginBottom: 20,
   },
-  textoBotao: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  linkText: {
-    color: "#5B65D6",
-    fontSize: 12,
-    textAlign: "center",
-  },
-
-  footerRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 40,
-  },
-  footerText: {
-    color: "#333",
-    fontSize: 12,
-  },
-  linkTextFooter: {
-    color: "#5B65D6",
-    fontSize: 12,
-  },
+  textoBotao: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold" },
+  linkText: { color: "#0F14B8", fontSize: 13, textAlign: "center" },
+  footerRow: { flexDirection: "row", justifyContent: "center", marginTop: 30 },
+  footerText: { color: "#666", fontSize: 13 },
+  linkTextFooter: { color: "#0F14B8", fontSize: 13, fontWeight: "bold" },
 });
