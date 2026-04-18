@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 20,
     width: '100%',
-    minHeight: '35%',
+    minHeight: '55%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
