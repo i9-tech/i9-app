@@ -8,6 +8,7 @@ export const ENDPOINTS = {
     FUNCIONARIOS: '/colaboradores',
     LOGIN: '/colaboradores/login',
     PRIMEIRO_ACESSO: 'colaboradores/primeiro-acesso',
+    ALTERAR_SENHA: '/colaboradores/alterar-senha',
     CARRINHO: '/itens-carrinho',
     CARRINHO_PRATO: '/itens-carrinho/prato',
     CARRINHO_PRODUTO: '/itens-carrinho/produto',
@@ -59,4 +60,5 @@ export const ENDPOINTS = {
     GERENCIAMENTO_PLANO_EMPRESA: '/gerenciamento-planos/empresa',
     PLANOS_TEMPLATES: "/plano-templates",
     RECUPERAR_SENHA_ESQUECIDA: "/recuperacoes/esqueceu-senha",
+    NOTIFICACOES: "/notificacoes"
 }

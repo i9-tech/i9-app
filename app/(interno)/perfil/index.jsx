@@ -26,26 +26,90 @@ export default function Perfil() {
   const [plano, setPlano] = useState(null);
   const [token, setToken] = useState(null);
   const [modalVisivel, setModalVisivel] = useState(false);
-  const router = useRouter();
+  const [modalPlanoVisivel, setModalPlanoVisivel] = useState(false);
 
-  // Remova os dois useEffects antigos de carregar e fazer o GET, e use este:
+  const router = useRouter();
+  const [ocultarSenhaAtual, setOcultarSenhaAtual] = useState(true);
+  const [ocultarNovaSenha, setOcultarNovaSenha] = useState(true);
+  const [ocultarConfirmarSenha, setOcultarConfirmarSenha] = useState(true);
+  const [senhaAtual, setSenhaAtual] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+
+  const handleAlterarSenha = async () => {
+    if (!senhaAtual || !novaSenha || !confirmarSenha) {
+      global.showToast("error", "Preencha todos os campos!");
+      return;
+    }
+
+    if (novaSenha !== confirmarSenha) {
+      global.showToast("error", "As senhas não coincidem!");
+      return;
+    }
+
+    try {
+      await global.executarComToast(
+        () =>
+          api.patch(
+            `${ENDPOINTS.ALTERAR_SENHA}/${usuario?.userId}/${usuario?.empresaId}`,
+            {
+              senhaAtual,
+              novaSenha,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          ),
+        {
+          loadingMsg: "Alterando senha...",
+          successMsg: "Senha alterada com sucesso!",
+          errorMsg: "Erro ao alterar senha!",
+          onSuccess: () => {
+            setModalVisivel(false);
+            setSenhaAtual("");
+            setNovaSenha("");
+            setConfirmarSenha("");
+          },
+
+        }
+
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const isAnual = plano?.periodo?.toLowerCase() === "anual";
+
+  const valorExibido = isAnual
+    ? plano?.valorCobrado * 12
+    : plano?.valorCobrado;
+
+  const sufixo = isAnual ? "/ano" : "/mês";
+
   useEffect(() => {
     async function carregarDados() {
       try {
         const usuarioSalvo = await buscarUsuario();
         const tokenSalvo = await recuperarToken();
-        
+
         setUsuario(usuarioSalvo);
         setToken(tokenSalvo);
 
         // Só faz a chamada na API se tiver o token!
         if (tokenSalvo) {
           const response = await api.get(
-            `${ENDPOINTS.EMPRESAS}/${usuarioSalvo?.empresaId || 1}`, 
+            `${ENDPOINTS.EMPRESAS}/${usuarioSalvo?.empresaId}`,
             { headers: { Authorization: `Bearer ${tokenSalvo}` } }
           );
           setEmpresa(response.data);
-          setPlano(response.data.gerenciamentoPlano);
+          const responsePlano = await api.get(
+            `${ENDPOINTS.GERENCIAMENTO_PLANO_EMPRESA}/${usuarioSalvo?.empresaId}`,
+            { headers: { Authorization: `Bearer ${tokenSalvo}` } }
+          );
+          setPlano(responsePlano.data);
         }
       } catch (error) {
         console.error("Erro ao buscar dados do perfil:", error);
@@ -70,40 +134,64 @@ export default function Perfil() {
           <Modal titulo="Editar Senha" onClose={() => setModalVisivel(false)}>
             <View>
               <Text>Senha atual:</Text>
-              <TextInput
-                placeholder="Digite sua senha"
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#ccc",
-                  padding: 10,
-                  marginBottom: 10,
-                }}
-              />
+              <View style={styles.inputSenhaContainer}>
+                <TextInput
+                  placeholder="Digite sua senha"
+                  secureTextEntry={ocultarSenhaAtual}
+                  value={senhaAtual}
+                  onChangeText={setSenhaAtual}
+                  style={[styles.inputSenha, { outlineStyle: "none" }]}
+                />
+                <Pressable onPress={() => setOcultarSenhaAtual(prev => !prev)}>
+                  <Ionicons
+                    name={ocultarSenhaAtual ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#999"
+                  />
+                </Pressable>
+              </View>
             </View>
+
             <View>
               <Text>Nova senha:</Text>
-              <TextInput
-                placeholder="Digite sua nova senha"
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#ccc",
-                  padding: 10,
-                  marginBottom: 10,
-                }}
-              />
+              <View style={styles.inputSenhaContainer}>
+                <TextInput
+                  placeholder="Digite sua nova senha"
+                  secureTextEntry={ocultarNovaSenha}
+                  value={novaSenha}
+                  onChangeText={setNovaSenha}
+                  style={styles.inputSenha}
+                />
+                <Pressable onPress={() => setOcultarNovaSenha(prev => !prev)}>
+                  <Ionicons
+                    name={ocultarNovaSenha ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#999"
+                  />
+                </Pressable>
+              </View>
             </View>
+
             <View>
-              <Text>Confirmar nova senha::</Text>
-              <TextInput
-                placeholder="Confirme sua nova senha"
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#ccc",
-                  padding: 10,
-                  marginBottom: 10,
-                }}
-              />
+              <Text>Confirmar nova senha:</Text>
+              <View style={styles.inputSenhaContainer}>
+                <TextInput
+                  placeholder="Confirme sua nova senha"
+                  secureTextEntry={ocultarConfirmarSenha}
+                  value={confirmarSenha}
+                  onChangeText={setConfirmarSenha}
+                  style={styles.inputSenha}
+                />
+                <Pressable onPress={() => setOcultarConfirmarSenha(prev => !prev)}>
+                  <Ionicons
+                    name={ocultarConfirmarSenha ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#999"
+                  />
+                </Pressable>
+              </View>
             </View>
+
 
             <View style={{ marginTop: 45, gap: 15, justifyContent: "space-between" }}>
               <Pressable
@@ -113,7 +201,7 @@ export default function Perfil() {
                   borderRadius: 6,
                   alignItems: "center",
                 }}
-                onPress={() => Alert.alert("Função em desenvolvimento!")}
+                onPress={handleAlterarSenha}
               >
                 <Text style={{ color: "#fff", fontWeight: "bold" }}>
                   Salvar Alterações
@@ -132,6 +220,52 @@ export default function Perfil() {
                   Cancelar
                 </Text>
               </Pressable>
+            </View>
+          </Modal>
+        )}
+
+
+        {modalPlanoVisivel && plano && (
+          <Modal titulo="Seu Plano" onClose={() => setModalPlanoVisivel(false)}>
+
+            <View style={styles.cardPlano}>
+
+              <Text style={[
+                styles.status,
+                { backgroundColor: plano.ativo ? "#C8E6C9" : "#FFCDD2" }
+              ]}>
+                {plano.ativo ? "Ativo" : "Inativo"}
+              </Text>
+
+              <Text style={styles.tituloPlano}>
+                {plano.planoTemplate?.tipo}
+              </Text>
+
+              <Text style={styles.descricaoPlano}>
+                {plano.planoTemplate?.descricao}
+              </Text>
+
+              <Text style={styles.preco}>
+                R$ {valorExibido?.toFixed(2).replace(".", ",")}
+                <Text style={styles.periodo}>{sufixo} </Text>
+              </Text>
+
+              <View style={styles.datas}>
+                <Text>Início: {formatarData(plano.dataInicio)}</Text>
+                <Text>Vencimento: {formatarData(plano.dataFim)}</Text>
+              </View>
+
+              <View style={styles.lista}>
+                <Text>✔️ {plano.planoTemplate?.qtdUsuarios} Usuários</Text>
+                <Text>✔️ {plano.planoTemplate?.qtdSuperUsuarios} Super Usuários</Text>
+                <Text>
+                  {plano.planoTemplate?.acessoDashboard ? "✔️" : "❌"} Dashboard
+                </Text>
+                <Text>
+                  {plano.planoTemplate?.acessoRelatorioWhatsApp ? "✔️" : "❌"} WhatsApp
+                </Text>
+              </View>
+
             </View>
           </Modal>
         )}
@@ -205,7 +339,7 @@ export default function Perfil() {
           </Pressable>
           <Pressable
             style={[styles.configItem, { borderBottomWidth: 0 }]}
-            onPress={() => Alert.alert("Função em desenvolvimento!")}
+            onPress={() => setModalPlanoVisivel(true)}
           >
             <Text style={styles.configText}>📦 Visualizar plano</Text>
             <Ionicons name="chevron-forward" size={20} color="#333" />
@@ -277,9 +411,24 @@ const styles = StyleSheet.create({
     color: "#555",
     marginTop: 2,
   },
-
   infoSection: {
     paddingHorizontal: 20,
+  },
+  inputSenhaContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  inputSenha: {
+    flex: 1,
+    paddingVertical: 10,
+    outlineStyle: "none",
+    outlineWidth: 0,
+    outline: "none",
   },
   card: {
     backgroundColor: "#FAFAFA",
@@ -354,5 +503,51 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  cardPlano: {
+    backgroundColor: "#F8F8F8",
+    borderRadius: 16,
+    padding: 16,
+  },
+  status: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#2E7D32",
+    marginBottom: 10,
+  },
+  tituloPlano: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111",
+    marginBottom: 4,
+  },
+  descricaoPlano: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 16,
+  },
+  preco: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#0F14B8",
+    marginBottom: 10,
+  },
+  periodo: {
+    fontSize: 16,
+    color: "#000000d9",
+    marginBottom: 10,
+    fontWeight: "400",
+  },
+  datas: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  lista: {
+    gap: 6,
   },
 });

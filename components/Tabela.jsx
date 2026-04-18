@@ -1,11 +1,35 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, Dimensions } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, Alert } from "react-native";
+import ConfirmModal from "../components/ConfirmModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export default function Tabela({ data }) {
+export default function Tabela({ data, onDelete, onEdit }) {
   // Se não houver dados, não renderiza a estrutura para evitar bugs visuais
   if (!data || data.length === 0) return null;
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [itemSelecionado, setItemSelecionado] = useState(null);
+
+
+  const nomeSelecionado = itemSelecionado?.nome || "";
+
+  const abrirConfirmacao = (item) => {
+    setItemSelecionado(item);
+    setModalVisible(true);
+  };
+
+  const confirmarDelete = () => {
+    if (!itemSelecionado) return;
+
+    const id = itemSelecionado.id;
+    const nome = itemSelecionado.nome;
+
+    setModalVisible(false);
+    setItemSelecionado(null);
+
+    onDelete(id, nome);
+  };
 
   return (
     <View style={styles.wrapper}>
@@ -16,7 +40,7 @@ export default function Tabela({ data }) {
           <View style={styles.fixedColumn}>
             <Text style={styles.fixedHeader}>Nome</Text>
             {data.map((item, index) => (
-              <View key={index} style={styles.fixedRowContainer}>
+              <View key={item.id} style={styles.fixedRowContainer}>
                 <Text style={styles.fixedCell} numberOfLines={1} ellipsizeMode="tail">
                   {item.nome}
                 </Text>
@@ -45,7 +69,7 @@ export default function Tabela({ data }) {
 
               {/* LINHAS DA TABELA */}
               {data.map((item, index) => (
-                <View key={index} style={styles.rowContainer}>
+                <View key={item.id} style={styles.rowContainer}>
                   <Text style={[styles.cell, { width: 70 }]}>{item.codigo ?? "-"}</Text>
 
                   <Text style={[styles.cell, { width: 110 }]}>
@@ -85,8 +109,12 @@ export default function Tabela({ data }) {
                   </Text>
 
                   <View style={[styles.cell, { width: 90, flexDirection: 'row', justifyContent: 'center' }]}>
-                    <Text style={{ fontSize: 16 }}>✏️</Text>
-                    <Text style={{ fontSize: 16, marginLeft: 10 }}>🗑️</Text>
+                    <Pressable onPress={() => onEdit(item)}>
+                      <Text style={{ fontSize: 16 }}>✏️</Text>
+                    </Pressable>
+                    <Pressable onPress={() => abrirConfirmacao(item)}>
+                      <Text style={{ fontSize: 16, marginLeft: 10 }}>🗑️</Text>
+                    </Pressable>
                   </View>
                 </View>
               ))}
@@ -94,6 +122,15 @@ export default function Tabela({ data }) {
           </ScrollView>
         </View>
       </View>
+
+      <ConfirmModal
+        visible={modalVisible}
+        title="Excluir produto"
+        message={`Deseja excluir "${nomeSelecionado}"?`}
+        confirmText={"Excluir"}
+        onConfirm={confirmarDelete}
+        onCancel={() => setModalVisible(false)}
+      />
     </View>
   );
 }

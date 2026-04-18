@@ -35,9 +35,14 @@ export default function Toast({ visible, message, type, duration = 2500 }) {
     if (visible && type !== "loading") {
       progress.setValue(1);
 
+      const tempo =
+        type === "success" ? 4000 :
+          type === "error" ? 4000 :
+            duration;
+
       Animated.timing(progress, {
         toValue: 0,
-        duration: duration,
+        duration: tempo,
         useNativeDriver: false,
       }).start();
     }

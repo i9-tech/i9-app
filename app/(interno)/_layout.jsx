@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Slot, useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
+import Toast from "../../components/Toast"
 
 export default function Layout() {
   const router = useRouter();
@@ -15,6 +16,71 @@ export default function Layout() {
   // Injeção das funções globais
   global.setHeaderTitulo = setTitulo;
   global.setHeaderSubTitulo = setSubTitulo;
+
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("info");
+
+
+  global.showToast = (type, message) => {
+    setToastType(type);
+    setToastMessage(message);
+    setToastVisible(true);
+
+    if (type !== "loading") {
+      setTimeout(() => setToastVisible(false), 4000);
+    }
+  };
+
+  global.executarComToast = async (fn, config) => {
+    const {
+      loadingMsg = "Carregando...",
+      successMsg = "Sucesso!",
+      errorMsg = "Erro!",
+      minTime = 800,
+      onSuccess,
+    } = config;
+
+    const startTime = Date.now();
+    global.showToast("loading", loadingMsg);
+
+    try {
+      const result = await fn();
+
+      const elapsed = Date.now() - startTime;
+      if (elapsed < minTime) {
+        await new Promise((res) => setTimeout(res, minTime - elapsed));
+      }
+
+      global.showToast("success", successMsg);
+      onSuccess?.(result);
+
+      return result;
+    } catch (err) {
+      const elapsed = Date.now() - startTime;
+      if (elapsed < minTime) {
+        await new Promise((res) => setTimeout(res, minTime - elapsed));
+      }
+
+      let msg = errorMsg;
+
+      if (err?.response?.data?.errors) {
+        msg = err.response.data.errors
+          .map((e) => e.defaultMessage)
+          .join("\n");
+      }
+
+      else if (err?.response?.data?.mensagem) {
+        msg = err.response.data.mensagem;
+      } else if (err?.response?.data?.message) {
+        msg = err.response.data.message;
+      }
+
+      global.showToast("error", msg);
+
+      throw err;
+    }
+  };
 
   const notificacoes = 3;
 
@@ -81,12 +147,18 @@ export default function Layout() {
             </Pressable>
           );
         })}
+
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+        />
       </View>
 
       {/* BOTÃO ADICIONAR (+) - FIXO NA FRENTE DA NAVBAR */}
       {isEstoque && (
-        <TouchableOpacity 
-          style={styles.addButton} 
+        <TouchableOpacity
+          style={styles.addButton}
           activeOpacity={0.8}
           onPress={() => {
             if (global.onPressAddEstoque) {
