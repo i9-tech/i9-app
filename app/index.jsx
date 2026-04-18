@@ -121,7 +121,7 @@ export default function Home() {
         }
       );
     } catch (err) {
-      console.error("Erro ao fazer login:", err);
+    //  console.error("Erro ao fazer login:", err);
     }
   }, [usuario, senha, executarComToast, showToast]);
 
