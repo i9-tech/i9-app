@@ -58,4 +58,8 @@ export const ENDPOINTS = {
     VENDA_KPIS: 'vendas/kpis',
     GERENCIAMENTO_PLANO_EMPRESA: '/gerenciamento-planos/empresa',
     PLANOS_TEMPLATES: "/plano-templates",
+    CHAT_IA: "/chats",
+    CHAT_IA_ATUALIZAR_NOME: "/chats/atualizar-nome",
+    CHAT_IA_FIXAR_CHAT: "/chats/fixar-chat",
+    MENSAGEM_IA: "/mensagens-ia"
 }
