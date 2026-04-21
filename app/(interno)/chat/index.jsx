@@ -361,6 +361,7 @@ export default function Chat() {
           id_usuario: funcionario.userId.toString(),
           pergunta: textoFormatado,
           token: token,
+          empresa_id: funcionario.empresaId,
         },
         getAuthHeader(),
       );
@@ -625,8 +626,10 @@ export default function Chat() {
                   ]}
                 >
                   {typeof msg.hora === "string"
-                    ? msg.hora.substring(0, 5)
-                    : msg.hora}
+                      ? msg.hora.includes("T")
+                          ? msg.hora.split("T")[1].substring(0, 5)
+                          : msg.hora.substring(0, 5)
+                      : msg.hora}
                 </Text>
               )}
             </View>
