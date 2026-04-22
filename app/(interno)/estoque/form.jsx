@@ -35,10 +35,18 @@ export default function CadastroProduto() {
     codigo: params.codigo || "",
     nome: params.nome || "",
     quantidade: params.quantidade || "",
-    setor: params.setorId ? { id: params.setorId, nome: params.setorNome } : null,
-    categoria: params.categoriaId ? { id: params.categoriaId, nome: params.categoriaNome } : null,
-    valorCompra: params.valorCompra ? Number(params.valorCompra).toFixed(2) : "0.00",
-    valorUnitario: params.valorUnitario ? Number(params.valorUnitario).toFixed(2) : "0.00",
+    setor: params.setorId
+      ? { id: params.setorId, nome: params.setorNome }
+      : null,
+    categoria: params.categoriaId
+      ? { id: params.categoriaId, nome: params.categoriaNome }
+      : null,
+    valorCompra: params.valorCompra
+      ? Number(params.valorCompra).toFixed(2)
+      : "0.00",
+    valorUnitario: params.valorUnitario
+      ? Number(params.valorUnitario).toFixed(2)
+      : "0.00",
     quantidadeMin: params.quantidadeMin || "",
     quantidadeMax: params.quantidadeMax || "",
     descricao: params.descricao || "",
@@ -47,7 +55,9 @@ export default function CadastroProduto() {
   useEffect(() => {
     global.setHeaderTitulo(produtoId ? "Editar Produto" : "Novo Produto");
     global.setHeaderSubTitulo(
-      produtoId ? `Editando: ${params.nome}` : "Preencha os campos para cadastrar"
+      produtoId
+        ? `Editando: ${params.nome}`
+        : "Preencha os campos para cadastrar",
     );
   }, [produtoId, params.nome]);
 
@@ -59,10 +69,16 @@ export default function CadastroProduto() {
       setToken(tkn);
 
       if (user && tkn) {
-        api.get(`${ENDPOINTS.SETORES}/${user.userId}`, { headers: { Authorization: `Bearer ${tkn}` } })
-          .then(res => setSetores(res.data));
-        api.get(`${ENDPOINTS.CATEGORIAS}/${user.userId}`, { headers: { Authorization: `Bearer ${tkn}` } })
-          .then(res => setCategorias(res.data));
+        api
+          .get(`${ENDPOINTS.SETORES}/${user.userId}`, {
+            headers: { Authorization: `Bearer ${tkn}` },
+          })
+          .then((res) => setSetores(res.data));
+        api
+          .get(`${ENDPOINTS.CATEGORIAS}/${user.userId}`, {
+            headers: { Authorization: `Bearer ${tkn}` },
+          })
+          .then((res) => setCategorias(res.data));
       }
     }
     carregarDados();
@@ -70,13 +86,94 @@ export default function CadastroProduto() {
 
   const formatarMoedaExibicao = (valor) => {
     const numero = parseFloat(valor || 0);
-    return "R$ " + numero.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return (
+      "R$ " +
+      numero
+        .toFixed(2)
+        .replace(".", ",")
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+    );
   };
 
   const handleMudarValor = (campo, texto) => {
     const apenasNumeros = String(texto).replace(/\D/g, "");
     const valorDecimal = (parseInt(apenasNumeros || "0", 10) / 100).toFixed(2);
     setProduto({ ...produto, [campo]: valorDecimal });
+  };
+
+  const handleSalvar = async () => {
+    try {
+      if (!usuario || !token) {
+        alert("Sessão expirada. Faça login novamente.");
+        return;
+      }
+
+      const idCategoria = produto.categoria?.id || produto.categoria;
+      const idSetor = produto.setor?.id || produto.setor;
+
+      const dados = {
+        codigo: parseInt(produto.codigo),
+        nome: produto.nome,
+        quantidade: parseInt(produto.quantidade),
+        valorCompra: parseFloat(produto.valorCompra),
+        valorUnitario: parseFloat(produto.valorUnitario),
+        quantidadeMin: parseInt(produto.quantidadeMin),
+        quantidadeMax: parseInt(produto.quantidadeMax),
+        descricao: produto.descricao,
+        dataRegistro: new Date().toISOString().split('T')[0],
+        
+        categoria: idCategoria ? { id: idCategoria } : null,
+        setor: idSetor ? { id: idSetor } : null,
+        funcionario: { id: usuario.userId }
+      };
+      
+      // console.log("JSON backend:", JSON.stringify(dados));
+
+      const formData = new FormData();
+
+      const requestBlob = new Blob([JSON.stringify(dados)], {
+        type: "application/json",
+      });
+
+      formData.append(
+        produtoId ? "produtoParaEditar" : "produtoParaCadastrar", 
+        requestBlob, 
+        "request.json"
+      );
+
+      if (imagemSelecionada && imagemSelecionada.uri) {
+        const uri = imagemSelecionada.uri;
+        const fileName = uri.split("/").pop() || "imagem.jpg";
+        const match = /\.(\w+)$/.exec(fileName);
+        const type = match ? `image/${match[1]}` : "image/jpeg";
+
+        formData.append("imagem", {
+          uri: Platform.OS === "ios" ? uri.replace("file://", "") : uri,
+          name: fileName,
+          type: type,
+        });
+      }
+
+      const url = produtoId 
+        ? `${ENDPOINTS.PRODUTOS}/${produtoId}/${usuario.userId}` 
+        : `${ENDPOINTS.PRODUTOS}/${usuario.userId}`;
+
+      const response = await (produtoId ? api.patch : api.post)(url, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.status === 201 || response.status === 200) {
+        alert(produtoId ? "Produto editado com sucesso!" : "Produto cadastrado com sucesso!");
+        router.push("/estoque");
+      }
+
+    } catch (error) {
+      console.error("Erro ao salvar produto:", error.response?.data || error.message);
+      alert("Erro ao salvar produto! Verifique os dados.");
+    }
   };
 
   return (
@@ -89,7 +186,6 @@ export default function CadastroProduto() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formularioCard}>
-
           {/* IMAGEM */}
           <View style={{ alignItems: "center", marginBottom: 20 }}>
             <CampoImagem
@@ -193,16 +289,14 @@ export default function CadastroProduto() {
               onChangeText={(t) => setProduto({ ...produto, quantidadeMax: t })}
             />
           </View>
-
-
-
         </View>
 
         <View style={styles.botoesContainer}>
           <TouchableOpacity
             style={styles.btnSalvar}
             activeOpacity={0.8}
-            onPress={() => console.log("Salvar produto:", produto)}
+            // onPress={() => console.log("Salvar produto:", produto)}
+            onPress={handleSalvar}
           >
             <Text style={styles.btnTextSalvar}>
               {produtoId ? "Editar" : "Cadastrar"}
@@ -217,10 +311,7 @@ export default function CadastroProduto() {
             <Text style={styles.btnTextCancelar}>Cancelar</Text>
           </TouchableOpacity>
         </View>
-
       </ScrollView>
-
-
     </View>
   );
 }
@@ -228,11 +319,11 @@ export default function CadastroProduto() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#F2F2F2"
+    backgroundColor: "#F2F2F2",
   },
   container: {
     padding: 16,
-    paddingBottom: 40
+    paddingBottom: 40,
   },
   formularioCard: {
     backgroundColor: "#FFFFFF",
@@ -247,25 +338,25 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 20,
-    width: "100%"
+    width: "100%",
   },
   rowWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
   },
   inputGroupWrap: {
     width: width < 500 ? "100%" : "48%",
-    marginBottom: 20
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: "600",
     color: "#000000",
-    marginBottom: 8
+    marginBottom: 8,
   },
   required: {
-    color: "red"
+    color: "red",
   },
   input: {
     backgroundColor: "#FFF",
@@ -279,12 +370,12 @@ const styles = StyleSheet.create({
   },
   textArea: {
     height: 100,
-    textAlignVertical: "top"
+    textAlignVertical: "top",
   },
   botoesContainer: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 10
+    marginTop: 10,
   },
   btnSalvar: {
     flex: 1,
@@ -296,7 +387,7 @@ const styles = StyleSheet.create({
   btnTextSalvar: {
     color: "#FFF",
     fontWeight: "700",
-    fontSize: 16
+    fontSize: 16,
   },
   btnCancelar: {
     flex: 1,
@@ -310,6 +401,6 @@ const styles = StyleSheet.create({
   btnTextCancelar: {
     color: "#000",
     fontWeight: "700",
-    fontSize: 16
+    fontSize: 16,
   },
 });
