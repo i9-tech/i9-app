@@ -8,6 +8,7 @@ export const ENDPOINTS = {
     FUNCIONARIOS: '/colaboradores',
     LOGIN: '/colaboradores/login',
     PRIMEIRO_ACESSO: 'colaboradores/primeiro-acesso',
+    ALTERAR_SENHA: '/colaboradores/alterar-senha',
     CARRINHO: '/itens-carrinho',
     CARRINHO_PRATO: '/itens-carrinho/prato',
     CARRINHO_PRODUTO: '/itens-carrinho/produto',
@@ -61,5 +62,7 @@ export const ENDPOINTS = {
     CHAT_IA: "/chats",
     CHAT_IA_ATUALIZAR_NOME: "/chats/atualizar-nome",
     CHAT_IA_FIXAR_CHAT: "/chats/fixar-chat",
-    MENSAGEM_IA: "/mensagens-ia"
+    MENSAGEM_IA: "/mensagens-ia",
+    RECUPERAR_SENHA_ESQUECIDA: "/recuperacoes/esqueceu-senha",
+    NOTIFICACOES: "/notificacoes"
 }

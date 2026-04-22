@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import api from "../../../provider/api";
 import { ENDPOINTS } from "../../../utils/endpoints";
 import { buscarUsuario, recuperarToken } from "../../../utils/storage";
+import { router } from "expo-router";
 
 
 export default function Estoque() {
@@ -23,10 +24,9 @@ export default function Estoque() {
   }, []);
 
 
-  // Esta função será disparada pelo botão que está no Layout
   global.onPressAddEstoque = () => {
-    alert("Botão clicado!");
-  };
+     router.push("/estoque/form") 
+    };
 
   const [setorSelecionado, setSetorSelecionado] = useState(null);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
@@ -139,8 +139,6 @@ export default function Estoque() {
     itensPorPagina,
   ]);
 
-
-
   useEffect(() => {
     if (!usuario || !token) return;
 
@@ -190,6 +188,61 @@ export default function Estoque() {
 
   }, [usuario, token]);
 
+  const handleEditarProduto = (produto) => {
+    router.push({
+      pathname: "/estoque/form",
+      params: { 
+        id: produto.id,
+        codigo: produto.codigo,
+        nome: produto.nome,
+        quantidade: produto.quantidade,
+        valorCompra: produto.valorCompra,
+        valorUnitario: produto.valorUnitario,
+        quantidadeMin: produto.quantidadeMin,
+        quantidadeMax: produto.quantidadeMax,
+        descricao: produto.descricao,
+        setorId: produto.setor?.id,
+        setorNome: produto.setor?.nome,
+        categoriaId: produto.categoria?.id,
+        categoriaNome: produto.categoria?.nome
+      }
+    });
+  };
+
+  const handleDeleteProduto = async (id, nome) => {
+    try {
+      await executarComToast(
+        () =>
+          api.delete(
+            `${ENDPOINTS.PRODUTOS}/${id}/${usuario.userId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          ),
+        {
+          loadingMsg: `Excluindo "${nome}"...`,
+          successMsg: `"${nome}" excluído com sucesso!`,
+          errorMsg: `Erro ao excluir "${nome}"!`,
+          onSuccess: () => {
+            setProdutos((prev) => prev.filter((p) => p.id !== id));
+
+            api.get(`${ENDPOINTS.PRODUTOS_QUANTIDADE_DIFERENTE}/${usuario.userId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+              .then((res) => {
+                const totalGeral = res.data;
+                global.setHeaderSubTitulo(`${totalGeral} itens diferentes em estoque`);
+              })
+              .catch((err) => console.error("Erro ao atualizar Header após delete:", err));
+          },
+        }
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <View style={styles.safe}>
@@ -203,7 +256,10 @@ export default function Estoque() {
               placeholder="Procurar Produto"
               style={styles.searchInput}
               value={termoBusca}
-              onChangeText={setTermoBusca}
+              onChangeText={(text) => {
+                setTermoBusca(text);
+                setPaginaAtual(0);
+              }}
             />
 
             <TouchableOpacity
@@ -320,7 +376,10 @@ export default function Estoque() {
           </View>
 
           {/* Tabela */}
-          <Tabela data={produtos}
+          <Tabela
+            data={produtos}
+            onDelete={handleDeleteProduto}
+            onEdit={handleEditarProduto}
           />
 
           <View style={styles.pagination}>
@@ -434,7 +493,7 @@ const styles = StyleSheet.create({
   dropdownRow: {
     flexDirection: "row",
     marginBottom: 10,
-    gap: 8, 
+    gap: 8,
   },
 
   cardRow: {

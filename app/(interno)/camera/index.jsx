@@ -9,17 +9,39 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as DocumentPicker from "expo-document-picker";
+import axios from "axios";
 import Modal from "../../../components/Modal";
+import Toast from "../../../components/Toast";
 
 export default function Camera() {
   const [permissao, solicitarPermissao] = useCameraPermissions();
   const [escaneado, setEscaneado] = useState(false);
   const [modalVisivel, setModalVisivel] = useState(true);
 
+
+  // 🔥 TOAST STATE
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success",
+  });
+
   useEffect(() => {
     global.setHeaderTitulo("Câmera");
     global.setHeaderSubTitulo("Escaneie a nota fiscal para adicionar os produtos");
   }, []);
+
+  // 🔥 FUNÇÃO PRA MOSTRAR TOAST
+  const mostrarToast = (message, type = "success") => {
+    setToast({ visible: true, message, type });
+
+    if (type !== "loading") {
+      setTimeout(() => {
+        setToast({ visible: false, message: "", type });
+      }, 4000);
+    }
+  };
 
   if (!permissao) {
     return <View style={styles.safe} />;
@@ -28,39 +50,81 @@ export default function Camera() {
   if (!permissao.granted && modalVisivel) {
     return (
       <Modal titulo="Permissão Necessária">
-          <View style={styles.modalContent}>
-            <Text style={styles.textoPermissaoModal}>
-              Precisamos da sua permissão para acessar a câmera do dispositivo e ler as notas fiscais pelo aplicativo.
-            </Text>
-            
-            <Pressable style={styles.botaoPrincipal} onPress={() => {
+        <View style={styles.modalContent}>
+          <Text style={styles.textoPermissaoModal}>
+            Precisamos da sua permissão para acessar a câmera do dispositivo.
+          </Text>
+
+          <Pressable
+            style={styles.botaoPrincipal}
+            onPress={() => {
               solicitarPermissao();
               setModalVisivel(false);
-            }}>
-              <Text style={styles.textoBotaoPrincipal}>Conceder Permissão</Text>
-            </Pressable>
-          </View>
-        </Modal>
+            }}
+          >
+            <Text style={styles.textoBotaoPrincipal}>
+              Conceder Permissão
+            </Text>
+          </Pressable>
+        </View>
+      </Modal>
     );
   }
 
+  // 📷 SCAN QR
   const aoEscanearCodigo = ({ type, data }) => {
     setEscaneado(true);
-    Alert.alert(
-      "Leitura Concluída",
-      `Dados da Nota: ${data}`,
-      [
-        {
-          text: "Escanear Novamente",
-          onPress: () => setEscaneado(false),
-        },
-      ]
-    );
+    mostrarToast(`Dados da Nota: ${data}`, "success");
   };
+
+  // 📂 SELECIONAR ARQUIVO
+  const selecionarArquivo = async () => {
+    const resultado = await DocumentPicker.getDocumentAsync({
+      type: [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+      ],
+    });
+
+    if (resultado.canceled) return;
+
+    const arquivo = resultado.assets[0];
+    enviarArquivo(arquivo);
+  };
+
+  const enviarArquivo = async (arquivo) => {
+  mostrarToast("Enviando arquivo...", "loading");
+
+  const formData = new FormData();
+
+  formData.append("file", arquivo.file);
+
+  try {
+    const response = await axios.post(
+      "http://localhost:8000/upload",
+      formData
+    );
+
+    if (response.data.status === "sucesso") {
+      mostrarToast("ETL realizado com sucesso!", "success");
+    } else {
+      mostrarToast("Erro ao processar arquivo", "error");
+    }
+
+  } catch (error) {
+    console.log("ERRO REAL:", error.response?.data);
+    mostrarToast("Erro ao enviar arquivo", "error");
+  }
+};
 
   return (
     <View style={styles.safe}>
-      
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+      />
+
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Ionicons name="camera" size={22} color="#111" />
@@ -68,7 +132,7 @@ export default function Camera() {
         </View>
 
         <Text style={styles.subtitulo}>
-          Aponte a câmera para a nota fiscal. O sistema irá identificar automaticamente os produtos
+          Aponte a câmera ou envie um arquivo Excel
         </Text>
       </View>
 
@@ -77,12 +141,19 @@ export default function Camera() {
           style={StyleSheet.absoluteFillObject}
           facing="back"
           barcodeScannerSettings={{
-            barcodeTypes: ["qr"], 
+            barcodeTypes: ["qr"],
           }}
           onBarcodeScanned={escaneado ? undefined : aoEscanearCodigo}
         />
       </View>
 
+      <Pressable style={styles.uploadBox} onPress={selecionarArquivo}>
+        <Ionicons name="cloud-upload-outline" size={28} color="#0F14B8" />
+        <Text style={styles.uploadTitle}>Enviar nota fiscal</Text>
+        <Text style={styles.uploadSubtitle}>
+          Toque para selecionar o arquivo Excel
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -129,11 +200,11 @@ const styles = StyleSheet.create({
   },
   cameraPlaceholder: {
     flex: 1,
-    backgroundColor: "#EBEBEB", 
+    backgroundColor: "#EBEBEB",
     justifyContent: "center",
     alignItems: "center",
   },
-  
+
   modalContent: {
     paddingVertical: 10,
     alignItems: "center",
@@ -146,7 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   botaoPrincipal: {
-    backgroundColor: "#0F14B8", 
+    backgroundColor: "#0F14B8",
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 10,
@@ -157,5 +228,29 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  uploadBox: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#0F14B8",
+    borderRadius: 16,
+    paddingVertical: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F9FAFF",
+    bottom: 10,
+  },
+
+  uploadTitle: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0F14B8",
+  },
+
+  uploadSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 4,
   },
 });
