@@ -13,11 +13,44 @@ import * as DocumentPicker from "expo-document-picker";
 import axios from "axios";
 import Modal from "../../../components/Modal";
 import Toast from "../../../components/Toast";
+import ProdutosModal from "../../../components/ProdutosModal";
 
 export default function Camera() {
   const [permissao, solicitarPermissao] = useCameraPermissions();
   const [escaneado, setEscaneado] = useState(false);
   const [modalVisivel, setModalVisivel] = useState(true);
+  const [modalProdutos, setModalProdutos] = useState(false);
+  const [produtos, setProdutos] = useState([]);
+
+  const mockProdutos = [
+  { nome: "ULTRA LED BOLINHA E27 5W", quantidade: 1, valor_compra: 593.50 },
+  { nome: "ULTRA LED A60 15W", quantidade: 1, valor_compra: 871.00 },
+  { nome: "Conjunto pinça emb.", quantidade: 4, valor_compra: 4200.00 },
+  { nome: "Pino Guia Barra Selagem", quantidade: 20, valor_compra: 540.00 },
+  { nome: "Placa Base Spreader", quantidade: 6, valor_compra: 1188.00 },
+  { nome: "Trava emb. inferior", quantidade: 10, valor_compra: 1080.00 },
+  { nome: "Rolete Alumínio", quantidade: 2, valor_compra: 252.00 },
+  { nome: "Eixo inferior stacker", quantidade: 10, valor_compra: 270.00 },
+  { nome: "Suporte Emb. linha 90", quantidade: 4, valor_compra: 216.00 },
+  { nome: "Rolete esteira saída", quantidade: 10, valor_compra: 720.00 },
+  { nome: "Rolete aço", quantidade: 10, valor_compra: 1080.00 },
+  { nome: "Guia asa delta", quantidade: 1, valor_compra: 612.00 },
+  { nome: "Hipoclorito de sódio", quantidade: 12, valor_compra: 6583.20 },
+  { nome: "Rolamento 6202 ZZ", quantidade: 1, valor_compra: 17.00 },
+  { nome: "Rolamento 6204 ZZ", quantidade: 1, valor_compra: 11.00 },
+  { nome: "Selo mecânico tipo 21", quantidade: 1, valor_compra: 381.00 },
+  { nome: "Anel Oring 160x3,5", quantidade: 1, valor_compra: 33.00 },
+  { nome: "Rotor Robusta 400T", quantidade: 1, valor_compra: 296.00 },
+  { nome: "Cantoneira abas iguais", quantidade: 120, valor_compra: 1470.00 },
+  { nome: "Soda cáustica líquida", quantidade: 6, valor_compra: 6822.36 },
+  { nome: "Fralda Personal Hiper M", quantidade: 16, valor_compra: 1661.60 },
+  { nome: "Fralda Personal Jumbo G", quantidade: 47, valor_compra: 5665.85 },
+  { nome: "Fralda Personal Jumbo M", quantidade: 60, valor_compra: 7233.00 },
+  { nome: "Papel higiênico 30m", quantidade: 1, valor_compra: 50.53 },
+  { nome: "Papel siliconado 45mm", quantidade: 149760, valor_compra: 89376.77 },
+  { nome: "Cloro carreta", quantidade: 21, valor_compra: 19164.46 },
+  { nome: "Areia entrega cidade", quantidade: 1, valor_compra: 420.00 },
+];
 
 
   // 🔥 TOAST STATE
@@ -93,29 +126,33 @@ export default function Camera() {
   };
 
   const enviarArquivo = async (arquivo) => {
-  mostrarToast("Enviando arquivo...", "loading");
+    mostrarToast("Enviando arquivo...", "loading");
 
-  const formData = new FormData();
+    const formData = new FormData();
 
-  formData.append("file", arquivo.file);
+    formData.append("file", arquivo.file);
 
-  try {
-    const response = await axios.post(
-      "http://localhost:8000/upload",
-      formData
-    );
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/upload",
+        formData
+      );
 
-    if (response.data.status === "sucesso") {
-      mostrarToast("ETL realizado com sucesso!", "success");
-    } else {
-      mostrarToast("Erro ao processar arquivo", "error");
+      if (response.data.status === "sucesso") {
+        const produtos = response.data.produtos;
+        mostrarToast("ETL realizado com sucesso!", "success");
+        setModalProdutos(true);
+        setProdutos(mockProdutos);
+      }
+      else {
+        mostrarToast("Erro ao processar arquivo", "error");
+      }
+
+    } catch (error) {
+      console.log("ERRO REAL:", error.response?.data);
+      mostrarToast("Erro ao enviar arquivo", "error");
     }
-
-  } catch (error) {
-    console.log("ERRO REAL:", error.response?.data);
-    mostrarToast("Erro ao enviar arquivo", "error");
-  }
-};
+  };
 
   return (
     <View style={styles.safe}>
@@ -123,6 +160,11 @@ export default function Camera() {
         visible={toast.visible}
         message={toast.message}
         type={toast.type}
+      />
+      <ProdutosModal
+        visible={modalProdutos}
+        produtos={produtos}
+        onClose={() => setModalProdutos(false)}
       />
 
       <View style={styles.header}>
