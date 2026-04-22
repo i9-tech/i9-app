@@ -25,6 +25,8 @@ const sugestoes = [
   "Quantas vendas tivemos ontem?",
 ];
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default function Chat() {
   const [token, setToken] = useState(null);
   const [funcionario, setFuncionario] = useState(null);
@@ -47,6 +49,13 @@ export default function Chat() {
     mensagem: "",
     botoes: [],
   });
+
+  // ==========================================
+  // NOVOS ESTADOS: SELEÇÃO MÚLTIPLA
+  // ==========================================
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [chatsParaApagar, setChatsParaApagar] = useState([]);
+  const [isApagandoMultiplos, setIsApagandoMultiplos] = useState(false);
 
   const scrollViewRef = useRef();
 
@@ -230,21 +239,83 @@ export default function Chat() {
         {
           text: "Sim, apagar",
           style: "destructive",
-          onPress: () => apagarChat(),
+          onPress: () => apagarChat(chatEmFoco.id),
         },
       ],
     );
   };
 
-  const apagarChat = async () => {
+  const apagarChat = async (chatId) => {
     try {
       await api.delete(
-        `${ENDPOINTS.CHAT_IA}/${chatEmFoco.id}/${funcionario.userId}`,
+        `${ENDPOINTS.CHAT_IA}/${chatId}/${funcionario.userId}`,
         getAuthHeader(),
       );
-      setChats((prev) => prev.filter((c) => c.id !== chatEmFoco.id));
+      setChats((prev) => prev.filter((c) => c.id !== chatId));
     } catch (err) {
       exibirAlerta("Erro", "Não foi possível apagar o chat.");
+    }
+  };
+
+  // ==========================================
+  // FUNÇÕES DE EXCLUSÃO MÚLTIPLA
+  // ==========================================
+  const iniciarModoSelecao = () => {
+    setModalMenuListVisivel(false);
+    setModoSelecao(true);
+    setChatsParaApagar([]);
+  };
+
+  const toggleSelecaoChat = (id) => {
+    setChatsParaApagar((prev) =>
+      prev.includes(id) ? prev.filter((chatId) => chatId !== id) : [...prev, id]
+    );
+  };
+
+  const confirmarApagarMultiplos = () => {
+    if (chatsParaApagar.length === 0) {
+      exibirAlerta("Aviso", "Selecione pelo menos um chat para excluir.");
+      return;
+    }
+    exibirAlerta(
+      "Apagar Vários Chats",
+      `Você tem certeza que deseja apagar o(s) ${chatsParaApagar.length} chat(s) selecionado(s)?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir todos",
+          style: "destructive",
+          onPress: () => apagarChatsSelecionados(),
+        },
+      ],
+    );
+  };
+
+  const apagarChatsSelecionados = async () => {
+    setIsApagandoMultiplos(true);
+    let houveErro = false;
+
+    try {
+      for (const id of chatsParaApagar) {
+        await api.delete(`${ENDPOINTS.CHAT_IA}/${id}/${funcionario.userId}`, getAuthHeader());
+        await sleep(600);
+      }
+      
+      setChats((prev) => prev.filter((c) => !chatsParaApagar.includes(c.id)));
+    } catch (err) {
+      console.error("Erro ao apagar múltiplos chats", err);
+      houveErro = true;
+    } finally {
+      setIsApagandoMultiplos(false);
+      setModoSelecao(false);
+      setChatsParaApagar([]);
+      
+      if (houveErro) {
+        exibirAlerta("Aviso", "Alguns chats podem não ter sido apagados devido a um erro. A lista será atualizada.");
+        buscarChats(funcionario.userId, token);
+      } else {
+        exibirAlerta("Sucesso", "Chats apagados com sucesso!");
+      }
     }
   };
 
@@ -408,6 +479,7 @@ export default function Chat() {
           <TouchableOpacity
             style={styles.novoChatBtnBig}
             onPress={criarNovoChat}
+            disabled={modoSelecao}
           >
             <Ionicons name="add-circle" size={24} color="#FFF" />
             <Text style={styles.novoChatTextBig}>Criar Novo Chat</Text>
@@ -424,8 +496,17 @@ export default function Chat() {
             chatsOrdenados.map((chat) => (
               <TouchableOpacity
                 key={chat.id}
-                style={styles.chatListItem}
-                onPress={() => selecionarChat(chat)}
+                style={[
+                  styles.chatListItem,
+                  modoSelecao && chatsParaApagar.includes(chat.id) && { borderColor: '#D9534F', borderWidth: 1 }
+                ]}
+                onPress={() => {
+                  if (modoSelecao) {
+                    toggleSelecaoChat(chat.id);
+                  } else {
+                    selecionarChat(chat);
+                  }
+                }}
               >
                 <View style={styles.chatListInfo}>
                   <Ionicons
@@ -454,16 +535,56 @@ export default function Chat() {
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  style={styles.optionsBtn}
-                  onPress={() => abrirOpcoesLista(chat)}
-                >
-                  <Ionicons name="ellipsis-vertical" size={20} color="#555" />
-                </TouchableOpacity>
+                {modoSelecao ? (
+                  <TouchableOpacity
+                    style={styles.optionsBtn}
+                    onPress={() => toggleSelecaoChat(chat.id)}
+                  >
+                    <Ionicons
+                      name={chatsParaApagar.includes(chat.id) ? "checkbox" : "square-outline"}
+                      size={24}
+                      color={chatsParaApagar.includes(chat.id) ? "#D9534F" : "#555"}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.optionsBtn}
+                    onPress={() => abrirOpcoesLista(chat)}
+                  >
+                    <Ionicons name="ellipsis-vertical" size={20} color="#555" />
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
             ))
           )}
         </ScrollView>
+
+        {modoSelecao && (
+          <View style={styles.selectionActionBar}>
+            <TouchableOpacity 
+              style={styles.btnCancelarSelecao} 
+              onPress={() => {
+                setModoSelecao(false);
+                setChatsParaApagar([]);
+              }}
+            >
+              <Text style={styles.btnTextCancelar}>Cancelar</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.btnExcluirSelecao,
+                chatsParaApagar.length === 0 && { backgroundColor: '#F5A9A9' }
+              ]} 
+              onPress={confirmarApagarMultiplos}
+              disabled={chatsParaApagar.length === 0}
+            >
+              <Text style={styles.btnTextExcluir}>
+                Excluir {chatsParaApagar.length > 0 ? `(${chatsParaApagar.length})` : 'Todos'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <Modal
           visible={modalMenuListVisivel}
@@ -501,6 +622,16 @@ export default function Chat() {
 
               <TouchableOpacity
                 style={styles.modalMenuItem}
+                onPress={iniciarModoSelecao}
+              >
+                <Ionicons name="checkbox-outline" size={20} color="#333" />
+                <Text style={styles.modalMenuItemText}>
+                  Selecionar Vários
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalMenuItem}
                 onPress={confirmarApagarChat}
               >
                 <Ionicons name="trash-outline" size={20} color="#D9534F" />
@@ -522,6 +653,22 @@ export default function Chat() {
               </TouchableOpacity>
             </View>
           </Pressable>
+        </Modal>
+
+        <Modal
+          visible={isApagandoMultiplos}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalAlertContent}>
+              <ActivityIndicator size="large" color="#D9534F" />
+              <Text style={[styles.modalAlertTitle, { marginTop: 15 }]}>Excluindo chats...</Text>
+              <Text style={styles.modalAlertMessage}>
+                Isso pode levar alguns segundos. Por favor, não feche o aplicativo.
+              </Text>
+            </View>
+          </View>
         </Modal>
 
         <Modal
@@ -1031,9 +1178,6 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "bold",
   },
-  // ==========================================
-  // NOVOS ESTILOS PARA O ALERTA CUSTOMIZADO
-  // ==========================================
   modalAlertContent: {
     backgroundColor: "#FFF",
     width: "80%",
@@ -1089,5 +1233,39 @@ const styles = StyleSheet.create({
   },
   modalAlertBtnTextDefault: {
     color: "#FFF",
+  },
+  // ==========================================
+  // NOVOS ESTILOS PARA A BARRA DE SELEÇÃO
+  // ==========================================
+  selectionActionBar: {
+    flexDirection: "row",
+    padding: 15,
+    backgroundColor: "#FFF",
+    borderTopWidth: 1,
+    borderTopColor: "#DDD",
+    justifyContent: "space-between",
+  },
+  btnCancelarSelecao: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: "#EEE",
+    borderRadius: 8,
+    marginRight: 10,
+    alignItems: "center",
+  },
+  btnExcluirSelecao: {
+    flex: 2,
+    padding: 12,
+    backgroundColor: "#D9534F",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  btnTextCancelar: { 
+    color: "#555", 
+    fontWeight: "bold" 
+  },
+  btnTextExcluir: { 
+    color: "#FFF", 
+    fontWeight: "bold" 
   },
 });

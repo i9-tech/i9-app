@@ -96,18 +96,20 @@ export default function Ajuda() {
           Ficou com alguma dúvida?
         </Text>
         <Text style={styles.ctaSubtitulo}>
-          Se ainda não tivermos respondido sua pergunta, você pode entrar em contato com o nosso suporte técnico e abrir um chamado com a nossa equipe.
+          Se ainda não tivermos respondido sua pergunta, você pode entrar em contato com o nosso suporte técnico e abrir um chamado com a nossa equipe. O e-mail para contato com a equipe de suporte é
         </Text>
       </View>
 
-      <Pressable
+      {/* <Pressable
         style={styles.botaoSuporte}
         onPress={() => Alert.alert("Suporte", "Sua solicitação está sendo encaminhada para a nossa equipe.")}
-      >
+      > */}
+      <View>
         <Text style={styles.textoBotaoSuporte}>
-          Abrir chamado
+          inove9technology@gmail.com
         </Text>
-      </Pressable>
+      </View>
+      {/* </Pressable> */}
 
     </ScrollView>
   );
@@ -208,9 +210,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   textoBotaoSuporte: {
-    color: "#FFFFFF",
+    // color: "#FFFFFF",
+    color: "#0F14B8",
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
+    // textDecorationLine: "underline",
   },
 });
