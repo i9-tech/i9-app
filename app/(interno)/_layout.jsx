@@ -2,8 +2,11 @@ import { View, Text, Pressable, StyleSheet, Platform, TouchableOpacity } from "r
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Slot, useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import Toast from "../../components/Toast"
+import { useEffect, useState } from "react";
+import { Client } from '@stomp/stompjs';
+import api from "../../provider/api";
+import Toast from "../../components/Toast";
+import { recuperarToken } from "../../utils/storage";
 
 export default function Layout() {
   const router = useRouter();
@@ -21,6 +24,47 @@ export default function Layout() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("info");
 
+  global.atualizarContadorNotificacoes = (valor) => {
+    setNotificacoesNaoLidas(prev => Math.max(0, prev + valor));
+  };
+
+  const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
+
+  useEffect(() => {
+    const carregarQuantidadeInicial = async () => {
+      try {
+        const token = await recuperarToken();
+        const respostaLista = await api.get('/notificacoes', { headers: { Authorization: `Bearer ${token}` } });
+        const naoLidas = respostaLista.data.filter(n => !n.lida).length;
+        setNotificacoesNaoLidas(naoLidas);
+      } catch (error) {
+        console.error("Erro ao carregar notificações iniciais no layout:", error);
+      }
+    };
+
+    carregarQuantidadeInicial();
+  }, []);
+
+  useEffect(() => {
+    const baseUrl = api.defaults.baseURL || "http://localhost:8080/";
+    const wsBaseUrl = baseUrl.replace(/^http/, 'ws').replace(/\/?$/, '');
+    const socketUrl = `${wsBaseUrl}/ws`;
+
+    const stompClient = new Client({
+      brokerURL: socketUrl,
+      forceWebsockets: true,
+      reconnectDelay: 5000,
+      onConnect: () => {
+        stompClient.subscribe('/topic/notificacoes', () => {
+          // Sempre que uma notificação chegar no canal, incrementa o contador
+          setNotificacoesNaoLidas(prev => prev + 1);
+        });
+      },
+    });
+
+    stompClient.activate();
+    return () => stompClient.deactivate();
+  }, []);
 
   global.showToast = (type, message) => {
     setToastType(type);
@@ -68,21 +112,16 @@ export default function Layout() {
         msg = err.response.data.errors
           .map((e) => e.defaultMessage)
           .join("\n");
-      }
-
-      else if (err?.response?.data?.mensagem) {
+      } else if (err?.response?.data?.mensagem) {
         msg = err.response.data.mensagem;
       } else if (err?.response?.data?.message) {
         msg = err.response.data.message;
       }
 
       global.showToast("error", msg);
-
       throw err;
     }
   };
-
-  const notificacoes = 3;
 
   // Lógica para mostrar o botão apenas no estoque
   const isEstoque = pathname.includes("/estoque");
@@ -113,9 +152,9 @@ export default function Layout() {
           onPress={() => router.push("/notificacoes")}
         >
           <Ionicons name="notifications-outline" size={24} color="#333" />
-          {notificacoes > 0 && (
+          {notificacoesNaoLidas > 0 && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{notificacoes}</Text>
+              <Text style={styles.badgeText}>{notificacoesNaoLidas}</Text>
             </View>
           )}
         </Pressable>
@@ -227,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopWidth: 1,
     borderTopColor: "#e6e6e6",
-    zIndex: 1, // Camada inferior
+    zIndex: 1, 
   },
   navItem: {
     alignItems: "center",
