@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Client } from '@stomp/stompjs';
 import api from "../../../provider/api";
-import { recuperarToken } from "../../../utils/storage";
+import { recuperarToken, buscarUsuario } from "../../../utils/storage";
 import { ENDPOINTS } from "../../../utils/endpoints";
 
 export default function Notificacoes() {
@@ -13,42 +13,79 @@ export default function Notificacoes() {
   const [carregando, setCarregando] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState('nao_lidas');
   const [token, setToken] = useState(null);
+  const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
     if (global.setHeaderTitulo) {
       global.setHeaderTitulo("Notificações");
-      global.setHeaderSubTitulo("Visualize as notificações de seu negócio em tempo real!");
+      global.setHeaderSubTitulo(
+        "Visualize as notificações de seu negócio em tempo real!"
+      );
     }
 
     const inicializar = async () => {
-      const tokenRecuperado = await recuperarToken();
-      setToken(tokenRecuperado);
-      if (tokenRecuperado) {
-        carregarNotificacoesDoServidor(tokenRecuperado);
-      } else {
+      try {
+        const tokenRecuperado = await recuperarToken();
+        const dadosUsuario = await buscarUsuario();
+
+        if (tokenRecuperado && dadosUsuario) {
+          setToken(tokenRecuperado);
+          setUsuario(dadosUsuario);
+        }
+
+      } catch (error) {
+        console.log(error);
         setCarregando(false);
-        console.error("Token não encontrado!");
       }
     };
 
     inicializar();
   }, []);
 
+  useEffect(() => {
+    if (token && usuario?.empresaId) {
+      carregarNotificacoesDoServidor(token);
+    }
+
+
+  }, [token, usuario]);
+
+  useEffect(() => {
+    console.log(usuario);
+  }, [usuario]);
+
   const carregarNotificacoesDoServidor = async (tokenAtual) => {
+
+    if (!usuario?.empresaId) {
+      console.log("Usuário sem empresaId");
+      return;
+    }
+
     try {
       setCarregando(true);
-      const resposta = await api.get(`${ENDPOINTS.NOTIFICACOES}`, {
-        headers: { Authorization: `Bearer ${tokenAtual}` }
-      });
+
+      const resposta = await api.get(
+        `${ENDPOINTS.NOTIFICACOES}?empresaId=${usuario.empresaId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokenAtual}`
+          }
+        }
+      );
+
       setNotificacoes(resposta.data);
+
     } catch (error) {
-      console.error("Erro ao procurar notificações no backend:", error);
+      console.error("Erro ao procurar notificações:", error?.response?.data || error);
+
     } finally {
       setCarregando(false);
     }
   };
 
   useEffect(() => {
+    if (!token || !usuario) return;
+
     const baseUrl = api.baseURL || "http://localhost:8080/";
     const wsBaseUrl = baseUrl.replace(/^http/, 'ws').replace(/\/?$/, '');
     const socketUrl = `${wsBaseUrl}/ws`;
@@ -57,18 +94,33 @@ export default function Notificacoes() {
       brokerURL: socketUrl,
       forceWebsockets: true,
       reconnectDelay: 5000,
+
       onConnect: () => {
-        stompClient.subscribe('/topic/notificacoes', () => {
-          if (token) {
+        stompClient.subscribe(
+          `/topic/notificacoes/${usuario.empresaId}`,
+          () => {
             carregarNotificacoesDoServidor(token);
           }
-        });
+        );
       },
+
+      onStompError: (frame) => {
+        console.log("Erro STOMP:", frame);
+      },
+
+      onWebSocketError: (error) => {
+        console.log("Erro WebSocket:", error);
+      }
     });
 
     stompClient.activate();
-    return () => stompClient.deactivate();
-  }, [token]);
+
+    return () => {
+      stompClient.deactivate();
+    };
+
+  }, [token, usuario]);
+
 
   const marcarComoLido = async (id) => {
     try {

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Client } from '@stomp/stompjs';
 import api from "../../provider/api";
 import Toast from "../../components/Toast";
-import { recuperarToken } from "../../utils/storage";
+import { recuperarToken, buscarUsuario} from "../../utils/storage";
 
 export default function Layout() {
   const router = useRouter();
@@ -46,25 +46,43 @@ export default function Layout() {
   }, []);
 
   useEffect(() => {
-    const baseUrl = api.defaults.baseURL || "http://localhost:8080/";
-    const wsBaseUrl = baseUrl.replace(/^http/, 'ws').replace(/\/?$/, '');
-    const socketUrl = `${wsBaseUrl}/ws`;
+    const conectar = async () => {
+      try {
+        const usuario = await buscarUsuario();
 
-    const stompClient = new Client({
-      brokerURL: socketUrl,
-      forceWebsockets: true,
-      reconnectDelay: 5000,
-      onConnect: () => {
-        stompClient.subscribe('/topic/notificacoes', () => {
-          // Sempre que uma notificação chegar no canal, incrementa o contador
-          setNotificacoesNaoLidas(prev => prev + 1);
+        if (!usuario?.empresaId) return;
+
+        const baseUrl = api.defaults.baseURL || "http://localhost:8080/";
+        const wsBaseUrl = baseUrl.replace(/^http/, 'ws').replace(/\/?$/, '');
+        const socketUrl = `${wsBaseUrl}/ws`;
+
+        const stompClient = new Client({
+          brokerURL: socketUrl,
+          forceWebsockets: true,
+          reconnectDelay: 5000,
+
+          onConnect: () => {
+            stompClient.subscribe(
+              `/topic/notificacoes/${usuario.empresaId}`,
+              () => {
+                setNotificacoesNaoLidas(prev => prev + 1);
+              }
+            );
+          },
         });
-      },
-    });
 
-    stompClient.activate();
-    return () => stompClient.deactivate();
+        stompClient.activate();
+
+        return () => stompClient.deactivate();
+
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    conectar();
   }, []);
+
 
   global.showToast = (type, message) => {
     setToastType(type);
