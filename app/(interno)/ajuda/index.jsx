@@ -8,37 +8,18 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-
-const faqData = [
-  {
-    id: '1',
-    question: 'Como cadastrar um produto?',
-    answer: 'Para cadastrar um novo produto:\n1. Vá até a aba "Produtos".\n2. Clique no botão "+" no canto inferior.\n3. Preencha os campos obrigatórios (nome, preço, etc.).\n4. Toque em "Salvar".',
-  },
-  {
-    id: '2',
-    question: 'Como escanear o produto?',
-    answer: 'Utilize a câmera do seu dispositivo:\n1. Na tela de venda, toque no ícone de código de barras.\n2. Aponte a câmera para o código de barras do produto.\n3. O sistema fará a leitura automaticamente.',
-  },
-  {
-    id: '3',
-    question: 'Como ver as vendas?',
-    answer: 'Para visualizar suas vendas:\n1. Vá até a tela inicial (Dashboard).\n2. Veja o card "Vendas do dia".\n3. Confira também o gráfico de desempenho de vendas da semana.\nEssas informações ajudam a acompanhar o desempenho do seu negócio.',
-  },
-  {
-    id: '4',
-    question: 'Como ver o lucro?',
-    answer: 'O lucro detalhado pode ser acessado em relatórios:\n1. Acesse o menu lateral.\n2. Toque em "Relatórios".\n3. Selecione "DRE Simplificado" ou "Relatório de Lucratividade".\n4. Filtre pelo período desejado.',
-  },
-];
+import { useTranslation } from 'react-i18next';
 
 export default function Ajuda() {
   const [expandedId, setExpandedId] = useState(null);
+  const { t } = useTranslation();
+
+  const faqData = t('ajuda.faq', { returnObjects: true }) || [];
 
   useEffect(() => {
-    global.setHeaderTitulo("Ajuda");
-    global.setHeaderSubTitulo("Contato com suporte i9Tech");
-  }, []);
+    global.setHeaderTitulo(t('ajuda.header_titulo'));
+    global.setHeaderSubTitulo(t('ajuda.header_subtitulo'));
+  }, [t]);
 
   const toggleItem = (id) => {
     if (expandedId === id) {
@@ -51,12 +32,11 @@ export default function Ajuda() {
   return (
     <ScrollView style={styles.safe} contentContainerStyle={styles.containerStyle}>
       <Text style={styles.titulo}>
-        Perguntas Frequentes
+        {t('ajuda.perguntas_frequentes')}
       </Text>
       <Text style={styles.introText}>
-        Encontre respostas ou fale com o suporte
+        {t('ajuda.intro_text')}
       </Text>
-
 
       <View style={styles.faqListContainer}>
         {faqData.map((item) => {
@@ -65,7 +45,7 @@ export default function Ajuda() {
             <View key={item.id} style={styles.faqItemContainer}>
               <Pressable onPress={() => toggleItem(item.id)}>
                 <View style={[
-                  styles.faqHeader, 
+                  styles.faqHeader,
                   isExpanded && styles.faqHeaderExpanded
                 ]}>
                   <Text style={styles.faqQuestion}>
@@ -93,26 +73,21 @@ export default function Ajuda() {
 
       <View style={styles.ctaContainer}>
         <Text style={styles.ctaTitulo}>
-          Ficou com alguma dúvida?
+          {t('ajuda.cta_titulo')}
         </Text>
         <Text style={styles.ctaSubtitulo}>
-          Se ainda não tivermos respondido sua pergunta, você pode entrar em contato com o nosso suporte técnico e abrir um chamado com a nossa equipe. O e-mail para contato com a equipe de suporte é
+          {t('ajuda.cta_subtitulo')}
         </Text>
       </View>
 
-      {/* <Pressable
-        style={styles.botaoSuporte}
-        onPress={() => Alert.alert("Suporte", "Sua solicitação está sendo encaminhada para a nossa equipe.")}
-      > */}
       <View>
         <Text style={styles.textoBotaoSuporte}>
           inove9technology@gmail.com
         </Text>
       </View>
-      {/* </Pressable> */}
 
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({

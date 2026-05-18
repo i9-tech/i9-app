@@ -116,3 +116,31 @@ export const descriptografarTokenJWT = (token) => {
     return null;
   }
 };
+
+// ==========================================
+// ARMAZENAMENTO DE IDIOMA
+// ==========================================
+
+export const salvarIdioma = async (idioma) => {
+  try {
+    if (isWeb) {
+      localStorage.setItem("idioma_app", idioma);
+    } else {
+      await AsyncStorage.setItem("idioma_app", idioma);
+    }
+  } catch (error) {
+    console.error("Erro ao salvar o idioma:", error);
+  }
+};
+
+export const buscarIdioma = async () => {
+  try {
+    const idioma = isWeb
+      ? localStorage.getItem("idioma_app")
+      : await AsyncStorage.getItem("idioma_app");
+    return idioma;
+  } catch (error) {
+    console.error("Erro ao buscar o idioma:", error);
+    return null;
+  }
+};

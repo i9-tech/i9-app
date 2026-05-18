@@ -6,11 +6,26 @@ import { useEffect, useState } from "react";
 import { Client } from '@stomp/stompjs';
 import api from "../../provider/api";
 import Toast from "../../components/Toast";
-import { recuperarToken, buscarUsuario} from "../../utils/storage";
+import { recuperarToken, buscarUsuario, buscarIdioma } from "../../utils/storage";
+import '../../locales/i18n';
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 
 export default function Layout() {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    const carregarIdiomaSalvo = async () => {
+      const idiomaSalvo = await buscarIdioma();
+      if (idiomaSalvo) {
+        i18n.changeLanguage(idiomaSalvo);
+      }
+    };
+    
+    carregarIdiomaSalvo();
+  }, []);
 
   // Estados para Título e Subtítulo
   const [titulo, setTitulo] = useState("App");
@@ -96,9 +111,9 @@ export default function Layout() {
 
   global.executarComToast = async (fn, config) => {
     const {
-      loadingMsg = "Carregando...",
-      successMsg = "Sucesso!",
-      errorMsg = "Erro!",
+      loadingMsg = t("layout.carregando"),
+      successMsg = t("layout.sucesso"),
+      errorMsg = t("layout.erro"),
       minTime = 800,
       onSuccess,
     } = config;
@@ -145,12 +160,12 @@ export default function Layout() {
   const isEstoque = pathname.includes("/estoque");
 
   const navItems = [
-    { label: "Dash", icon: "speedometer-outline", route: "/dashboard" },
-    { label: "Estoque", icon: "cube-outline", route: "/estoque" },
-    { label: "Câmera", icon: "camera-outline", route: "/camera" },
-    { label: "Chat IA", icon: "chatbubbles-outline", route: "/chat" },
-    { label: "Ajuda", icon: "help-circle-outline", route: "/ajuda" },
-    { label: "Perfil", icon: "person-outline", route: "/perfil" },
+    { label: t("layout.nav_dash"), icon: "speedometer-outline", route: "/dashboard" },
+    { label: t("layout.nav_estoque"), icon: "cube-outline", route: "/estoque" },
+    { label: t("layout.nav_camera"), icon: "camera-outline", route: "/camera" },
+    { label: t("layout.nav_chat"), icon: "chatbubbles-outline", route: "/chat" },
+    { label: t("layout.nav_ajuda"), icon: "help-circle-outline", route: "/ajuda" },
+    { label: t("layout.nav_perfil"), icon: "person-outline", route: "/perfil" },
   ];
 
   return (
