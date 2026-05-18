@@ -8,11 +8,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function Tabela({ data, onDelete, onEdit }) {
   const { t, i18n } = useTranslation();
   
-  if (!data || data.length === 0) return null;
-
   const [modalVisible, setModalVisible] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState(null);
-
+  
+  if (!data || data.length === 0) return null;
+  
   const nomeSelecionado = itemSelecionado?.nome || "";
 
   const abrirConfirmacao = (item) => {

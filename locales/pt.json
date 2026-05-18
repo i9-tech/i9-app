@@ -102,7 +102,7 @@
     "opcoes_conversa": "Opções da Conversa",
     "limpar_mensagens": "Limpar Mensagens"
   },
-  "dashboard": {
+ "dashboard": {
     "header_titulo": "Dashboard",
     "dia_atras": "(1 dia atrás)",
     "periodo": "({{inicio}} a {{fim}})",
@@ -117,12 +117,16 @@
     "unidades_vendidas": "{{count}} unidades vendidas",
     "nenhum": "Nenhum",
     "periodo_analise": "PERÍODO DE ANÁLISE",
-    "top_pratos": "TOP 7 Pratos mais vendidos",
-    "top_produtos": "TOP 7 Produtos mais vendidos",
+    "top_pratos": "Pratos mais vendidos",
+    "top_produtos": "Produtos mais vendidos",
     "tabela_item": "ITEM",
     "tabela_qtd": "QTD. VENDIDA",
     "selecione_intervalo": "Selecione o Intervalo",
-    "aplicar_filtro": "APLICAR FILTRO"
+    "aplicar_filtro": "APLICAR FILTRO",
+    "kpis": "Resumo & KPIs",
+    "graficos": "Gráficos",
+    "top_categorias": "Top 5 Categorias mais Vendidas",
+    "sem_dados": "Nenhum dado disponível"
   },
   "estoque": {
     "header_titulo": "Estoque",
