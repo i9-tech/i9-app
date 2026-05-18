@@ -14,7 +14,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import FUNDO from "../assets/login-fundo.png";
 import api from "../provider/api";
-import { salvarToken, salvarUsuario, verificarLogin, salvarIdioma } from "../utils/storage";
+import {
+  salvarToken,
+  salvarUsuario,
+  verificarLogin,
+  salvarIdioma,
+} from "../utils/storage";
 import { ENDPOINTS } from "../utils/endpoints";
 import ModalEsqueceuSenha from "../components/ModalEsqueceuSenha";
 import ModalEsqueceuSenhaSucesso from "../components/ModalEsqueceuSenhaSucesso";
@@ -31,7 +36,7 @@ export default function Home() {
   const [senha, setSenha] = useState("");
   const [logado, setLogado] = useState(false);
   const [ocultarSenha, setOcultarSenha] = useState(true);
-  
+
   const [modalSenhaVisible, setModalSenhaVisible] = useState(false);
   const [modalSucessoVisible, setModalSucessoVisible] = useState(false);
   const [modalIdiomaVisivel, setModalIdiomaVisivel] = useState(false);
@@ -96,7 +101,7 @@ export default function Home() {
         throw error;
       }
     },
-    [showToast]
+    [showToast],
   );
 
   /* =========================
@@ -111,7 +116,7 @@ export default function Home() {
   const idiomasList = [
     { code: "pt", label: t("login.idioma_pt") },
     { code: "en", label: t("login.idioma_en") },
-    { code: "es", label: t("login.idioma_es") }
+    { code: "es", label: t("login.idioma_es") },
   ];
 
   /* =========================
@@ -135,7 +140,7 @@ export default function Home() {
             salvarToken(res.data.token);
             router.push("/estoque");
           },
-        }
+        },
       );
     } catch (err) {
       // Erro já tratado no executor
@@ -158,11 +163,11 @@ export default function Home() {
               setModalSenhaVisible(false);
               setModalSucessoVisible(true);
             },
-          }
+          },
         );
-      } catch { }
+      } catch {}
     },
-    [executarComToast, t]
+    [executarComToast, t],
   );
 
   return (
@@ -179,16 +184,19 @@ export default function Home() {
           <View style={styles.header}>
             <Text style={styles.h1}>i9</Text>
             <Text style={styles.h2}>{t("login.boas_vindas")}</Text>
-            <Text style={styles.h4}>
-              {t("login.subtitulo")}
-            </Text>
+            <Text style={styles.h4}>{t("login.subtitulo")}</Text>
           </View>
 
           <View style={styles.card}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t("login.usuario")}</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color="#999" style={{ marginRight: 10 }} />
+                <Ionicons
+                  name="person-outline"
+                  size={18}
+                  color="#999"
+                  style={{ marginRight: 10 }}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="i9@cpf"
@@ -231,7 +239,9 @@ export default function Home() {
 
             <View style={styles.footerRow}>
               <Pressable onPress={() => setModalIdiomaVisivel(true)}>
-                <Text style={styles.linkTextFooter}>{t("login.alterar_idioma")}</Text>
+                <Text style={styles.linkTextFooter}>
+                  {t("login.alterar_idioma")}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -252,21 +262,26 @@ export default function Home() {
 
       {/* MODAL ALTERAR IDIOMA */}
       {modalIdiomaVisivel && (
-        <Modal titulo={t("login.selecionar_idioma")} onClose={() => setModalIdiomaVisivel(false)}>
+        <Modal
+          titulo={t("login.selecionar_idioma")}
+          onClose={() => setModalIdiomaVisivel(false)}
+        >
           <View style={styles.modalBody}>
             {idiomasList.map((lang) => (
               <Pressable
                 key={lang.code}
                 style={[
                   styles.idiomaItem,
-                  i18n.language === lang.code && styles.idiomaItemAtivo
+                  i18n.language === lang.code && styles.idiomaItemAtivo,
                 ]}
                 onPress={() => handleMudarIdioma(lang.code)}
               >
-                <Text style={[
-                  styles.idiomaTexto,
-                  i18n.language === lang.code && styles.idiomaTextoAtivo
-                ]}>
+                <Text
+                  style={[
+                    styles.idiomaTexto,
+                    i18n.language === lang.code && styles.idiomaTextoAtivo,
+                  ]}
+                >
                   {lang.label}
                 </Text>
                 {i18n.language === lang.code && (
@@ -278,11 +293,7 @@ export default function Home() {
         </Modal>
       )}
 
-      <Toast
-        visible={toastVisible}
-        message={toastMessage}
-        type={toastType}
-      />
+      <Toast visible={toastVisible} message={toastMessage} type={toastType} />
     </ImageBackground>
   );
 }
@@ -290,6 +301,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   fundoRaiz: {
     flex: 1,
+    width: "100%",
   },
   scrollContent: {
     flexGrow: 1,
@@ -301,8 +313,19 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   h1: { fontSize: 60, fontWeight: "bold", color: "#FFFFFF" },
-  h2: { fontSize: 32, fontWeight: "bold", color: "#FFFFFF", marginBottom: 10, textAlign: "center" },
-  h4: { fontSize: 16, color: "#FFFFFF", textAlign: "center", paddingHorizontal: 40 },
+  h2: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  h4: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    textAlign: "center",
+    paddingHorizontal: 40,
+  },
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
@@ -337,8 +360,20 @@ const styles = StyleSheet.create({
   footerText: { color: "#666", fontSize: 13 },
   linkTextFooter: { color: "#0F14B8", fontSize: 13, fontWeight: "bold" },
   modalBody: { paddingBottom: 10 },
-  idiomaItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 16, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: "#EEE" },
-  idiomaItemAtivo: { backgroundColor: "#F0F0FF", borderRadius: 8, borderBottomWidth: 0 },
+  idiomaItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  idiomaItemAtivo: {
+    backgroundColor: "#F0F0FF",
+    borderRadius: 8,
+    borderBottomWidth: 0,
+  },
   idiomaTexto: { fontSize: 16, color: "#444" },
-  idiomaTextoAtivo: { color: "#0F14B8", fontWeight: "bold" }
+  idiomaTextoAtivo: { color: "#0F14B8", fontWeight: "bold" },
 });

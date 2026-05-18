@@ -1,15 +1,15 @@
 {
   "expo": {
-    "scheme": "i9-app",
-    "name": "i9-app",
-    "slug": "i9-app",
+    "scheme": "i9 App",
+    "name": "i9 App",
+    "slug": "i9 App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-i9.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon-i9.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,13 +18,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon-i9.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon-i9.png"
     },
     "plugins": [
       "expo-secure-store",
