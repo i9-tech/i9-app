@@ -2,7 +2,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Button,
   Alert,
   Pressable,
 } from "react-native";
@@ -13,12 +12,13 @@ import * as DocumentPicker from "expo-document-picker";
 import axios from "axios";
 import Modal from "../../../components/Modal";
 import Toast from "../../../components/Toast";
+import { useTranslation } from "react-i18next";
 
 export default function Camera() {
   const [permissao, solicitarPermissao] = useCameraPermissions();
   const [escaneado, setEscaneado] = useState(false);
   const [modalVisivel, setModalVisivel] = useState(true);
-
+  const { t } = useTranslation();
 
   // 🔥 TOAST STATE
   const [toast, setToast] = useState({
@@ -28,9 +28,9 @@ export default function Camera() {
   });
 
   useEffect(() => {
-    global.setHeaderTitulo("Câmera");
-    global.setHeaderSubTitulo("Escaneie a nota fiscal para adicionar os produtos");
-  }, []);
+    global.setHeaderTitulo(t("camera.header_titulo"));
+    global.setHeaderSubTitulo(t("camera.header_subtitulo"));
+  }, [t]);
 
   // 🔥 FUNÇÃO PRA MOSTRAR TOAST
   const mostrarToast = (message, type = "success") => {
@@ -49,10 +49,10 @@ export default function Camera() {
 
   if (!permissao.granted && modalVisivel) {
     return (
-      <Modal titulo="Permissão Necessária">
+      <Modal titulo={t("camera.permissao_titulo")}>
         <View style={styles.modalContent}>
           <Text style={styles.textoPermissaoModal}>
-            Precisamos da sua permissão para acessar a câmera do dispositivo.
+            {t("camera.permissao_texto")}
           </Text>
 
           <Pressable
@@ -63,7 +63,7 @@ export default function Camera() {
             }}
           >
             <Text style={styles.textoBotaoPrincipal}>
-              Conceder Permissão
+              {t("camera.conceder_permissao")}
             </Text>
           </Pressable>
         </View>
@@ -74,7 +74,7 @@ export default function Camera() {
   // 📷 SCAN QR
   const aoEscanearCodigo = ({ type, data }) => {
     setEscaneado(true);
-    mostrarToast(`Dados da Nota: ${data}`, "success");
+    mostrarToast(t("camera.dados_nota", { data }), "success");
   };
 
   // 📂 SELECIONAR ARQUIVO
@@ -93,29 +93,29 @@ export default function Camera() {
   };
 
   const enviarArquivo = async (arquivo) => {
-  mostrarToast("Enviando arquivo...", "loading");
+    mostrarToast(t("camera.enviando_arquivo"), "loading");
 
-  const formData = new FormData();
+    const formData = new FormData();
 
-  formData.append("file", arquivo.file);
+    formData.append("file", arquivo.file);
 
-  try {
-    const response = await axios.post(
-      "http://localhost:8000/upload",
-      formData
-    );
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/upload",
+        formData
+      );
 
-    if (response.data.status === "sucesso") {
-      mostrarToast("ETL realizado com sucesso!", "success");
-    } else {
-      mostrarToast("Erro ao processar arquivo", "error");
+      if (response.data.status === "sucesso") {
+        mostrarToast(t("camera.etl_sucesso"), "success");
+      } else {
+        mostrarToast(t("camera.erro_processar"), "error");
+      }
+
+    } catch (error) {
+      console.log("ERRO REAL:", error.response?.data);
+      mostrarToast(t("camera.erro_enviar"), "error");
     }
-
-  } catch (error) {
-    console.log("ERRO REAL:", error.response?.data);
-    mostrarToast("Erro ao enviar arquivo", "error");
-  }
-};
+  };
 
   return (
     <View style={styles.safe}>
@@ -128,11 +128,11 @@ export default function Camera() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Ionicons name="camera" size={22} color="#111" />
-          <Text style={styles.titulo}>Ler nota fiscal</Text>
+          <Text style={styles.titulo}>{t("camera.ler_nota")}</Text>
         </View>
 
         <Text style={styles.subtitulo}>
-          Aponte a câmera ou envie um arquivo Excel
+          {t("camera.aponte_camera")}
         </Text>
       </View>
 
@@ -149,9 +149,9 @@ export default function Camera() {
 
       <Pressable style={styles.uploadBox} onPress={selecionarArquivo}>
         <Ionicons name="cloud-upload-outline" size={28} color="#0F14B8" />
-        <Text style={styles.uploadTitle}>Enviar nota fiscal</Text>
+        <Text style={styles.uploadTitle}>{t("camera.enviar_nota")}</Text>
         <Text style={styles.uploadSubtitle}>
-          Toque para selecionar o arquivo Excel
+          {t("camera.toque_selecionar")}
         </Text>
       </Pressable>
     </View>
@@ -204,7 +204,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   modalContent: {
     paddingVertical: 10,
     alignItems: "center",
@@ -240,14 +239,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFF",
     bottom: 10,
   },
-
   uploadTitle: {
     marginTop: 10,
     fontSize: 16,
     fontWeight: "600",
     color: "#0F14B8",
   },
-
   uploadSubtitle: {
     fontSize: 13,
     color: "#666",

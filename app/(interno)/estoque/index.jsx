@@ -10,23 +10,24 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Tabela from "../../../components/Tabela";
 import DropdownInterativo from "../../../components/Dropdown";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../../../provider/api";
 import { ENDPOINTS } from "../../../utils/endpoints";
 import { buscarUsuario, recuperarToken } from "../../../utils/storage";
 import { router } from "expo-router";
-
+import { useTranslation } from "react-i18next";
 
 export default function Estoque() {
-  useEffect(() => {
-    global.setHeaderTitulo("Estoque");
-    global.setHeaderSubTitulo("Carregando quantidade de itens em estoque");
-  }, []);
+  const { t, i18n } = useTranslation();
 
+  useEffect(() => {
+    global.setHeaderTitulo(t("estoque.header_titulo"));
+    global.setHeaderSubTitulo(t("estoque.header_subtitulo_carregando"));
+  }, [t]);
 
   global.onPressAddEstoque = () => {
-     router.push("/estoque/form") 
-    };
+    router.push("/estoque/form");
+  };
 
   const [setorSelecionado, setSetorSelecionado] = useState(null);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
@@ -53,9 +54,6 @@ export default function Estoque() {
   const [estoqueBaixo, setEstoqueBaixo] = useState(0);
   const [semEstoque, setSemEstoque] = useState(0);
 
-  const inicio = paginaAtual * itensPorPagina;
-  const fim = inicio + itensPorPagina;
-
   const aplicarFiltro = (status) => {
     setFiltroStatus(status);
     setMenuAberto(false);
@@ -64,13 +62,13 @@ export default function Estoque() {
 
   const textoFiltro =
     filtroStatus === "baixo" ? (
-      "⚠️ Estoque Baixo"
+      t("estoque.filtro_baixo")
     ) : filtroStatus === "sem" ? (
-      "❌ Sem Estoque"
+      t("estoque.filtro_sem")
     ) : (
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <Ionicons name="search" size={18} color="#333" />
-        <Text style={{ marginLeft: 5 }}>Filtros</Text>
+        <Text style={{ marginLeft: 5 }}>{t("estoque.filtros")}</Text>
       </View>
     );
 
@@ -79,7 +77,6 @@ export default function Estoque() {
     recuperarToken().then((t) => setToken(t));
   }, []);
 
-
   useEffect(() => {
     if (!usuario || !token) return;
 
@@ -87,8 +84,7 @@ export default function Estoque() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
-        const totalGeral = res.data;
-        global.setHeaderSubTitulo(`${totalGeral} itens diferentes em estoque`);
+        global.setHeaderSubTitulo(t("estoque.header_subtitulo_itens", { total: res.data }));
       })
       .catch((err) => console.error("Erro no Header:", err));
 
@@ -100,7 +96,7 @@ export default function Estoque() {
       headers: { Authorization: `Bearer ${token}` },
     }).then((res) => setCategorias(res.data));
 
-  }, [usuario, token]);
+  }, [usuario, token, t]);
 
   useEffect(() => {
     if (!usuario || !token) return;
@@ -145,48 +141,46 @@ export default function Estoque() {
     api.get(`${ENDPOINTS.PRODUTOS_QUANTIDADE_ESTOQUE}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
       .then((res) => setQuantidadeTotalProdutosEmEstoque(res.data))
       .catch((err) => {
-        console.error("Erro ao buscar quantidade de produtos em estoque:", err);
-        toast.error("Erro ao buscar quantidade de produtos em estoque!");
-
+        console.error(err);
+        toast.error(t("estoque.erro_qtd_estoque"));
       });
 
     api.get(`${ENDPOINTS.PRODUTOS_COMPRA}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
       .then((res) => setValorEstoque(res.data))
       .catch((err) => {
-        console.error("Erro ao buscar valor de compra de produtos em estoque:", err);
-        toast.error("Erro ao buscar valor de compra de produtos!");
+        console.error(err);
+        toast.error(t("estoque.erro_valor_compra"));
       });
 
     api.get(`${ENDPOINTS.PRODUTOS_LUCRO_BRUTO}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
       .then((res) => setLucroBruto(res.data))
       .catch((err) => {
-        console.error("Erro ao buscar lucro bruto de produtos em estoque:", err);
-        toast.error("Erro ao buscar lucro bruto de produtos em estoque!");
+        console.error(err);
+        toast.error(t("estoque.erro_lucro_bruto"));
       });
 
     api.get(`${ENDPOINTS.PRODUTOS_LUCRO_LIQUIDO}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
       .then((res) => setLucroLiquido(res.data))
       .catch((err) => {
-        console.error("Erro ao buscar lucro liquido de produtos em estoque:", err);
-        toast.error("Erro ao buscar lucro liquido de produtos em estoque!");
+        console.error(err);
+        toast.error(t("estoque.erro_lucro_liquido"));
       });
-
 
     api.get(`${ENDPOINTS.PRODUTOS_ESTOQUE_BAIXO}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
       .then((res) => setEstoqueBaixo(res.data))
       .catch((err) => {
-        console.error("Erro ao buscar quantidade estoque baixos produtos em estoque:", err);
-        toast.error("Erro ao buscar quantidade estoque baixos produtos em estoque!");
+        console.error(err);
+        toast.error(t("estoque.erro_estoque_baixo"));
       });
 
     api.get(`${ENDPOINTS.PRODUTOS_SEM_ESTOQUE}/${usuario.userId}`, { headers: { Authorization: `Bearer ${token}` }, })
       .then((res) => setSemEstoque(res.data))
       .catch((err) => {
-        console.error("Erro ao buscar quantidade de produtos sem estoque:", err);
-        toast.error("Erro ao buscar quantidade de produtos sem estoque!");
+        console.error(err);
+        toast.error(t("estoque.erro_sem_estoque"));
       });
 
-  }, [usuario, token]);
+  }, [usuario, token, t]);
 
   const handleEditarProduto = (produto) => {
     router.push({
@@ -222,9 +216,9 @@ export default function Estoque() {
             }
           ),
         {
-          loadingMsg: `Excluindo "${nome}"...`,
-          successMsg: `"${nome}" excluído com sucesso!`,
-          errorMsg: `Erro ao excluir "${nome}"!`,
+          loadingMsg: t("estoque.excluindo", { nome }),
+          successMsg: t("estoque.excluido_sucesso", { nome }),
+          errorMsg: t("estoque.erro_excluir", { nome }),
           onSuccess: () => {
             setProdutos((prev) => prev.filter((p) => p.id !== id));
 
@@ -232,8 +226,7 @@ export default function Estoque() {
               headers: { Authorization: `Bearer ${token}` },
             })
               .then((res) => {
-                const totalGeral = res.data;
-                global.setHeaderSubTitulo(`${totalGeral} itens diferentes em estoque`);
+                global.setHeaderSubTitulo(t("estoque.header_subtitulo_itens", { total: res.data }));
               })
               .catch((err) => console.error("Erro ao atualizar Header após delete:", err));
           },
@@ -250,10 +243,9 @@ export default function Estoque() {
 
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.container}>
-          {/* Barra superior */}
           <View style={styles.topBar}>
             <TextInput
-              placeholder="Procurar Produto"
+              placeholder={t("estoque.procurar_produto")}
               style={styles.searchInput}
               value={termoBusca}
               onChangeText={(text) => {
@@ -275,30 +267,29 @@ export default function Estoque() {
                   onPress={() => aplicarFiltro("baixo")}
                   style={styles.menuItem}
                 >
-                  <Text>⚠️ Estoque Baixo</Text>
+                  <Text>{t("estoque.filtro_baixo")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => aplicarFiltro("sem")}
                   style={styles.menuItem}
                 >
-                  <Text>❌ Sem Estoque</Text>
+                  <Text>{t("estoque.filtro_sem")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => aplicarFiltro("em_estoque")}
                   style={styles.menuItem}
                 >
-                  <Text>🔄 Limpar Filtro</Text>
+                  <Text>{t("estoque.filtro_limpar")}</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
-          {/* Dropdowns */}
           <View style={styles.dropdownRow}>
             <View style={{ flex: 1 }}>
               <DropdownInterativo
-                label="Todos Setores"
-                options={[{ id: null, nome: "Todos Setores" }, ...setores]}
+                label={t("estoque.todos_setores")}
+                options={[{ id: null, nome: t("estoque.todos_setores") }, ...setores]}
                 onSelect={(item) => {
                   setSetorSelecionado(item);
                   setPaginaAtual(0);
@@ -308,54 +299,52 @@ export default function Estoque() {
 
             <View style={{ flex: 1 }}>
               <DropdownInterativo
-                label={categoriaSelecionada?.nome || "Todas Categorias"}
-                options={[{ id: null, nome: "Todas Categorias" }, ...categorias]}
+                label={categoriaSelecionada?.nome || t("estoque.todas_categorias")}
+                options={[{ id: null, nome: t("estoque.todas_categorias") }, ...categorias]}
                 onSelect={(item) => setCategoriaSelecionada(item)}
               />
             </View>
           </View>
 
-          {/* Cards */}
           <View style={styles.cardRow}>
             <View style={styles.card}>
               <Text style={styles.cardValue}>
-                {valorEstoque.toLocaleString("pt-BR", {
+                {valorEstoque.toLocaleString(i18n.language, {
                   style: "currency",
                   currency: "BRL",
                 })}
               </Text>
-              <Text style={styles.cardLabel}>Valor Total do Estoque</Text>
+              <Text style={styles.cardLabel}>{t("estoque.valor_total")}</Text>
             </View>
 
             <View style={styles.card}>
               <Text style={styles.cardValue}>
-                {lucroBruto.toLocaleString("pt-BR", {
+                {lucroBruto.toLocaleString(i18n.language, {
                   style: "currency",
                   currency: "BRL",
                 })}
               </Text>
-              <Text style={styles.cardLabel}>Receita Estimada</Text>
+              <Text style={styles.cardLabel}>{t("estoque.receita_estimada")}</Text>
             </View>
 
             <View style={styles.card}>
               <Text style={styles.cardValue}>
-                {lucroLiquido.toLocaleString("pt-BR", {
+                {lucroLiquido.toLocaleString(i18n.language, {
                   style: "currency",
                   currency: "BRL",
                 })}
               </Text>
-              <Text style={styles.cardLabel}>Lucro Estimado de Venda</Text>
+              <Text style={styles.cardLabel}>{t("estoque.lucro_estimado")}</Text>
             </View>
           </View>
 
-          {/* Indicadores */}
           <View style={styles.statusRow}>
             <View style={styles.statusItem}>
               <View style={styles.statusIndicator}>
                 <View style={[styles.dot, { backgroundColor: "#FFC107" }]} />
                 <Text style={styles.statusNumber}>{estoqueBaixo || 0}</Text>
               </View>
-              <Text style={styles.statusLabel}>Estoque Baixo</Text>
+              <Text style={styles.statusLabel}>{t("estoque.estoque_baixo")}</Text>
             </View>
 
             <View style={styles.statusItem}>
@@ -363,7 +352,7 @@ export default function Estoque() {
                 <View style={[styles.dot, { backgroundColor: "red" }]} />
                 <Text style={styles.statusNumber}>{semEstoque || 0}</Text>
               </View>
-              <Text style={styles.statusLabel}>Sem Estoque</Text>
+              <Text style={styles.statusLabel}>{t("estoque.sem_estoque")}</Text>
             </View>
 
             <View style={styles.statusItem}>
@@ -371,11 +360,10 @@ export default function Estoque() {
                 <View style={[styles.dot, { backgroundColor: "green" }]} />
                 <Text style={styles.statusNumber}>{quantidadeProdutosEmEstoque || 0}</Text>
               </View>
-              <Text style={styles.statusLabel}>Em Estoque</Text>
+              <Text style={styles.statusLabel}>{t("estoque.em_estoque")}</Text>
             </View>
           </View>
 
-          {/* Tabela */}
           <Tabela
             data={produtos}
             onDelete={handleDeleteProduto}
@@ -429,166 +417,35 @@ export default function Estoque() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#f2f2f2",
-  },
-
-  container: {
-    padding: 16,
-  },
-
-  topBar: {
-    flexDirection: "row",
-    marginBottom: 10,
-    zIndex: 999,
-  },
-
-  searchInput: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 8,
-    marginRight: 8,
-    width: "50%",
-  },
-
-  filterButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#e6e6e6",
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    width: "50%",
-  },
-
-  filterText: {
-    marginLeft: 5,
-  },
-
-  dropdownMenu: {
-    position: "absolute",
-    top: 40,
-    right: 0,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    elevation: 10,
-    zIndex: 9999,
-    borderWidth: 1,
-    borderColor: "#e6e6e6",
-    minWidth: 150,
-  },
-
-  menuItem: {
-    padding: 10,
-  },
-
-  dropdownRow: {
-    flexDirection: "row",
-    marginBottom: 10,
-    gap: 8,
-  },
-
-  cardRow: {
-    justifyContent: "space-between",
-    marginVertical: 10,
-    gap: 10,
-  },
-
-  card: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 12,
-    width: "100%",
-    elevation: 3,
-  },
-
-  cardValue: {
-    fontWeight: "bold",
-    fontSize: 14,
-    textAlign: "center",
-  },
-
-  cardLabel: {
-    fontSize: 12,
-    color: "#666",
-    textAlign: "center",
-  },
-
-  statusRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 12,
-    marginVertical: 10,
-  },
-
-  statusItem: {
-    alignItems: "center",
-  },
-
-  statusIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 6,
-  },
-
-  statusNumber: {
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-
-  statusLabel: {
-    fontSize: 12,
-    color: "#666",
-  },
-
-  pagination: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    alignItems: "center",
-    marginVertical: 15,
-    gap: 6,
-    paddingBottom: 10,
-  },
-
-  pageButton: {
-    fontSize: 18,
-    paddingHorizontal: 10,
-  },
-
-  pageNumber: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: "#e6e6e6",
-  },
-
-  pageActive: {
-    backgroundColor: "#1E22AA",
-  },
-
-  pageText: {
-    color: "#333",
-  },
-
-  pageTextActive: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  safe: { flex: 1, backgroundColor: "#f2f2f2" },
+  container: { padding: 16 },
+  topBar: { flexDirection: "row", marginBottom: 10, zIndex: 999 },
+  searchInput: { flex: 1, backgroundColor: "#fff", padding: 10, borderRadius: 8, marginRight: 8, width: "50%" },
+  filterButton: { flexDirection: "row", alignItems: "center", backgroundColor: "#e6e6e6", paddingHorizontal: 10, borderRadius: 8, width: "50%" },
+  filterText: { marginLeft: 5 },
+  dropdownMenu: { position: "absolute", top: 40, right: 0, backgroundColor: "#fff", borderRadius: 8, elevation: 10, zIndex: 9999, borderWidth: 1, borderColor: "#e6e6e6", minWidth: 150 },
+  menuItem: { padding: 10 },
+  dropdownRow: { flexDirection: "row", marginBottom: 10, gap: 8 },
+  cardRow: { justifyContent: "space-between", marginVertical: 10, gap: 10 },
+  card: { backgroundColor: "#fff", padding: 20, borderRadius: 12, width: "100%", elevation: 3 },
+  cardValue: { fontWeight: "bold", fontSize: 14, textAlign: "center" },
+  cardLabel: { fontSize: 12, color: "#666", textAlign: "center" },
+  statusRow: { flexDirection: "row", justifyContent: "space-around", backgroundColor: "#fff", padding: 15, borderRadius: 12, marginVertical: 10 },
+  statusItem: { alignItems: "center" },
+  statusIndicator: { flexDirection: "row", alignItems: "center" },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
+  statusNumber: { fontWeight: "bold", fontSize: 16 },
+  statusLabel: { fontSize: 12, color: "#666" },
+  pagination: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", marginVertical: 15, gap: 6, paddingBottom: 10 },
+  pageButton: { fontSize: 18, paddingHorizontal: 10 },
+  pageNumber: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: "#e6e6e6" },
+  pageActive: { backgroundColor: "#1E22AA" },
+  pageText: { color: "#333" },
+  pageTextActive: { color: "#fff", fontWeight: "bold" },
 });

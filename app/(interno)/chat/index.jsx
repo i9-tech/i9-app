@@ -17,17 +17,14 @@ import api_ia from "../../../provider/api_ia";
 import api from "../../../provider/api";
 import { recuperarToken, buscarUsuario } from "../../../utils/storage";
 import { ENDPOINTS } from "../../../utils/endpoints";
-
-const sugestoes = [
-  "Qual produto mais vendeu hoje?",
-  "Vendas da semana",
-  "Qual foi o faturamento da semana?",
-  "Quantas vendas tivemos ontem?",
-];
+import { useTranslation } from "react-i18next";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function Chat() {
+  const { t } = useTranslation();
+  const sugestoes = t("chat.sugestoes", { returnObjects: true }) || [];
+
   const [token, setToken] = useState(null);
   const [funcionario, setFuncionario] = useState(null);
   const [chats, setChats] = useState([]);
@@ -50,9 +47,6 @@ export default function Chat() {
     botoes: [],
   });
 
-  // ==========================================
-  // NOVOS ESTADOS: SELEÇÃO MÚLTIPLA
-  // ==========================================
   const [modoSelecao, setModoSelecao] = useState(false);
   const [chatsParaApagar, setChatsParaApagar] = useState([]);
   const [isApagandoMultiplos, setIsApagandoMultiplos] = useState(false);
@@ -62,14 +56,14 @@ export default function Chat() {
   useEffect(() => {
     if (chatSelecionado) {
       global.setHeaderTitulo(
-        chatSelecionado.nomeChat || `Chat ${chatSelecionado.id}`,
+        chatSelecionado.nomeChat || t("chat.chat_padrao", { id: chatSelecionado.id }),
       );
-      global.setHeaderSubTitulo("Conversa ativa");
+      global.setHeaderSubTitulo(t("chat.header_subtitulo_chat"));
     } else {
-      global.setHeaderTitulo("Meus Chats");
-      global.setHeaderSubTitulo("Assistente inteligente de vendas");
+      global.setHeaderTitulo(t("chat.header_titulo_lista"));
+      global.setHeaderSubTitulo(t("chat.header_subtitulo_lista"));
     }
-  }, [chatSelecionado]);
+  }, [chatSelecionado, t]);
 
   useEffect(() => {
     async function carregarDadosIniciais() {
@@ -98,9 +92,6 @@ export default function Chat() {
     return b.id - a.id;
   });
 
-  // ==========================================
-  // FUNÇÃO DO ALERTA PERSONALIZADO
-  // ==========================================
   const exibirAlerta = (titulo, mensagem, botoes) => {
     const botoesPadrao = botoes || [
       { text: "OK", onPress: () => setModalAlertaVisivel(false) },
@@ -183,7 +174,7 @@ export default function Chat() {
       setChats((prev) => [...prev, novoChat]);
       selecionarChat(novoChat);
     } catch (err) {
-      exibirAlerta("Erro", "Não foi possível criar um novo chat.");
+      exibirAlerta(t("chat.erro"), t("chat.erro_criar_chat"));
       console.error(err);
     }
   };
@@ -223,21 +214,20 @@ export default function Chat() {
       );
       buscarChats(funcionario.userId);
     } catch (err) {
-      const mensagemErro =
-        err.response?.data?.message || "Não foi possível fixar o chat.";
-      exibirAlerta("Aviso", mensagemErro);
+      const mensagemErro = err.response?.data?.message || t("chat.erro_fixar_chat");
+      exibirAlerta(t("chat.aviso"), mensagemErro);
     }
   };
 
   const confirmarApagarChat = () => {
     setModalMenuListVisivel(false);
     exibirAlerta(
-      "Apagar Chat",
-      "Tem certeza que deseja excluir esta conversa? Isso apagará todas as mensagens.",
+      t("chat.apagar_chat_titulo"),
+      t("chat.apagar_chat_msg"),
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: t("chat.cancelar"), style: "cancel" },
         {
-          text: "Sim, apagar",
+          text: t("chat.sim_apagar"),
           style: "destructive",
           onPress: () => apagarChat(chatEmFoco.id),
         },
@@ -253,13 +243,10 @@ export default function Chat() {
       );
       setChats((prev) => prev.filter((c) => c.id !== chatId));
     } catch (err) {
-      exibirAlerta("Erro", "Não foi possível apagar o chat.");
+      exibirAlerta(t("chat.erro"), t("chat.erro_apagar_chat"));
     }
   };
 
-  // ==========================================
-  // FUNÇÕES DE EXCLUSÃO MÚLTIPLA
-  // ==========================================
   const iniciarModoSelecao = () => {
     setModalMenuListVisivel(false);
     setModoSelecao(true);
@@ -274,16 +261,16 @@ export default function Chat() {
 
   const confirmarApagarMultiplos = () => {
     if (chatsParaApagar.length === 0) {
-      exibirAlerta("Aviso", "Selecione pelo menos um chat para excluir.");
+      exibirAlerta(t("chat.aviso"), t("chat.selecione_chat_excluir"));
       return;
     }
     exibirAlerta(
-      "Apagar Vários Chats",
-      `Você tem certeza que deseja apagar o(s) ${chatsParaApagar.length} chat(s) selecionado(s)?`,
+      t("chat.apagar_varios_titulo"),
+      t("chat.apagar_varios_msg", { count: chatsParaApagar.length }),
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: t("chat.cancelar"), style: "cancel" },
         {
-          text: "Excluir todos",
+          text: t("chat.excluir_todos"),
           style: "destructive",
           onPress: () => apagarChatsSelecionados(),
         },
@@ -311,10 +298,10 @@ export default function Chat() {
       setChatsParaApagar([]);
       
       if (houveErro) {
-        exibirAlerta("Aviso", "Alguns chats podem não ter sido apagados devido a um erro. A lista será atualizada.");
+        exibirAlerta(t("chat.aviso"), t("chat.erro_apagar_varios"));
         buscarChats(funcionario.userId, token);
       } else {
-        exibirAlerta("Sucesso", "Chats apagados com sucesso!");
+        exibirAlerta(t("chat.sucesso"), t("chat.sucesso_apagar_varios"));
       }
     }
   };
@@ -327,7 +314,7 @@ export default function Chat() {
 
   const salvarNovoNomeChat = async () => {
     if (!novoNomeChat.trim()) {
-      exibirAlerta("Aviso", "O nome do chat não pode ser vazio.");
+      exibirAlerta(t("chat.aviso"), t("chat.erro_nome_vazio"));
       return;
     }
     try {
@@ -342,19 +329,19 @@ export default function Chat() {
       setModalEditarVisivel(false);
       buscarChats(funcionario.userId);
     } catch (err) {
-      exibirAlerta("Erro", "Falha ao renomear o chat.");
+      exibirAlerta(t("chat.erro"), t("chat.erro_renomear"));
     }
   };
 
   const confirmarApagarMensagens = () => {
     setModalMenuChatVisivel(false);
     exibirAlerta(
-      "Limpar Histórico",
-      "Deseja apagar todas as mensagens deste chat?",
+      t("chat.limpar_historico_titulo"),
+      t("chat.limpar_historico_msg"),
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: t("chat.cancelar"), style: "cancel" },
         {
-          text: "Limpar",
+          text: t("chat.limpar"),
           style: "destructive",
           onPress: () => apagarMensagens(),
         },
@@ -372,7 +359,7 @@ export default function Chat() {
         buscarMensagens(funcionario.userId, chatSelecionado.id);
       }
     } catch (err) {
-      exibirAlerta("Erro", "Não foi possível limpar as mensagens.");
+      exibirAlerta(t("chat.erro"), t("chat.erro_limpar_mensagens"));
     }
   };
 
@@ -459,7 +446,7 @@ export default function Chat() {
       const mensagemErro = {
         id: (Date.now() + 1).toString(),
         tipo: "bot",
-        texto: "Desculpe, ocorreu um erro ao processar sua pergunta.",
+        texto: t("chat.erro_processar_pergunta"),
         hora: obterHoraAtual(),
       };
       setMensagens((prev) => [...prev, mensagemErro]);
@@ -467,10 +454,6 @@ export default function Chat() {
       setIsLoadingIA(false);
     }
   };
-
-  // ==========================================
-  // RENDERIZAÇÃO CONDICIONAL DAS TELAS
-  // ==========================================
 
   if (!chatSelecionado) {
     return (
@@ -482,7 +465,7 @@ export default function Chat() {
             disabled={modoSelecao}
           >
             <Ionicons name="add-circle" size={24} color="#FFF" />
-            <Text style={styles.novoChatTextBig}>Criar Novo Chat</Text>
+            <Text style={styles.novoChatTextBig}>{t("chat.criar_novo_chat")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -491,7 +474,7 @@ export default function Chat() {
           contentContainerStyle={{ paddingBottom: 30 }}
         >
           {chatsOrdenados.length === 0 ? (
-            <Text style={styles.emptyStateText}>Nenhum chat criado ainda.</Text>
+            <Text style={styles.emptyStateText}>{t("chat.nenhum_chat")}</Text>
           ) : (
             chatsOrdenados.map((chat) => (
               <TouchableOpacity
@@ -517,12 +500,12 @@ export default function Chat() {
                   <View style={styles.chatListTextContainer}>
                     <View style={styles.titleRow}>
                       <Text style={styles.chatListTitle} numberOfLines={1}>
-                        {chat.nomeChat || `Chat ${chat.id}`}
+                        {chat.nomeChat || t("chat.chat_padrao", { id: chat.id })}
                       </Text>
 
                       {chat.dtFixado && (
                         <Text style={styles.chatListPinnedText}>
-                          Chat Fixado
+                          {t("chat.chat_fixado")}
                         </Text>
                       )}
                     </View>
@@ -530,7 +513,7 @@ export default function Chat() {
                     <Text style={styles.chatListSubtitle} numberOfLines={1}>
                       {chat.mensagemRecente
                         ? chat.mensagemRecente
-                        : "Nenhuma mensagem ainda..."}
+                        : t("chat.nenhuma_mensagem")}
                     </Text>
                   </View>
                 </View>
@@ -568,7 +551,7 @@ export default function Chat() {
                 setChatsParaApagar([]);
               }}
             >
-              <Text style={styles.btnTextCancelar}>Cancelar</Text>
+              <Text style={styles.btnTextCancelar}>{t("chat.cancelar")}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -580,7 +563,7 @@ export default function Chat() {
               disabled={chatsParaApagar.length === 0}
             >
               <Text style={styles.btnTextExcluir}>
-                Excluir {chatsParaApagar.length > 0 ? `(${chatsParaApagar.length})` : 'Todos'}
+                {chatsParaApagar.length > 0 ? t("chat.excluir_contador", { count: chatsParaApagar.length }) : t("chat.excluir_todos_btn")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -596,7 +579,7 @@ export default function Chat() {
             onPress={() => setModalMenuListVisivel(false)}
           >
             <View style={styles.modalMenuContent}>
-              <Text style={styles.modalMenuTitle}>Opções do Chat</Text>
+              <Text style={styles.modalMenuTitle}>{t("chat.opcoes_chat")}</Text>
 
               <TouchableOpacity
                 style={styles.modalMenuItem}
@@ -608,7 +591,7 @@ export default function Chat() {
                   color="#333"
                 />
                 <Text style={styles.modalMenuItemText}>
-                  {chatEmFoco?.dtFixado ? "Remover Fixação" : "Fixar Chat"}
+                  {chatEmFoco?.dtFixado ? t("chat.remover_fixacao") : t("chat.fixar_chat")}
                 </Text>
               </TouchableOpacity>
 
@@ -617,7 +600,7 @@ export default function Chat() {
                 onPress={abrirModalEditar}
               >
                 <Ionicons name="pencil-outline" size={20} color="#333" />
-                <Text style={styles.modalMenuItemText}>Renomear Chat</Text>
+                <Text style={styles.modalMenuItemText}>{t("chat.renomear_chat")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -626,7 +609,7 @@ export default function Chat() {
               >
                 <Ionicons name="checkbox-outline" size={20} color="#333" />
                 <Text style={styles.modalMenuItemText}>
-                  Selecionar Vários
+                  {t("chat.apagar_varios")}
                 </Text>
               </TouchableOpacity>
 
@@ -636,7 +619,7 @@ export default function Chat() {
               >
                 <Ionicons name="trash-outline" size={20} color="#D9534F" />
                 <Text style={[styles.modalMenuItemText, { color: "#D9534F" }]}>
-                  Apagar Chat
+                  {t("chat.apagar_chat_titulo")}
                 </Text>
               </TouchableOpacity>
 
@@ -648,7 +631,7 @@ export default function Chat() {
                 onPress={() => setModalMenuListVisivel(false)}
               >
                 <Text style={{ color: "#888", fontWeight: "bold" }}>
-                  Cancelar
+                  {t("chat.cancelar")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -663,9 +646,9 @@ export default function Chat() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalAlertContent}>
               <ActivityIndicator size="large" color="#D9534F" />
-              <Text style={[styles.modalAlertTitle, { marginTop: 15 }]}>Excluindo chats...</Text>
+              <Text style={[styles.modalAlertTitle, { marginTop: 15 }]}>{t("chat.excluindo_chats")}</Text>
               <Text style={styles.modalAlertMessage}>
-                Isso pode levar alguns segundos. Por favor, não feche o aplicativo.
+                {t("chat.nao_feche_app")}
               </Text>
             </View>
           </View>
@@ -681,12 +664,12 @@ export default function Chat() {
             style={styles.modalOverlay}
           >
             <View style={styles.modalEditContent}>
-              <Text style={styles.modalEditTitle}>Renomear Chat</Text>
+              <Text style={styles.modalEditTitle}>{t("chat.renomear_chat")}</Text>
               <TextInput
                 style={styles.modalEditInput}
                 value={novoNomeChat}
                 onChangeText={setNovoNomeChat}
-                placeholder="Novo nome do chat"
+                placeholder={t("chat.novo_nome_chat_placeholder")}
                 autoFocus={true}
               />
               <View style={styles.modalEditButtons}>
@@ -694,13 +677,13 @@ export default function Chat() {
                   style={styles.modalEditBtnCancel}
                   onPress={() => setModalEditarVisivel(false)}
                 >
-                  <Text style={styles.modalEditBtnCancelText}>Cancelar</Text>
+                  <Text style={styles.modalEditBtnCancelText}>{t("chat.cancelar")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.modalEditBtnSave}
                   onPress={salvarNovoNomeChat}
                 >
-                  <Text style={styles.modalEditBtnSaveText}>Salvar</Text>
+                  <Text style={styles.modalEditBtnSaveText}>{t("chat.salvar")}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -720,7 +703,7 @@ export default function Chat() {
       <View style={styles.chatHeader}>
         <TouchableOpacity style={styles.backBtn} onPress={voltarParaLista}>
           <Ionicons name="arrow-back" size={24} color="#1117B1" />
-          <Text style={styles.backBtnText}>Voltar</Text>
+          <Text style={styles.backBtnText}>{t("chat.voltar")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setModalMenuChatVisivel(true)}>
@@ -729,10 +712,10 @@ export default function Chat() {
       </View>
 
       <View style={styles.sugestoesContainer}>
-        <Text style={styles.sugestoesLabel}>Sugestões:</Text>
+        <Text style={styles.sugestoesLabel}>{t("chat.sugestoes_label")}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.chipsWrapper}>
-            {sugestoes.map((item, index) => (
+            {Array.isArray(sugestoes) && sugestoes.map((item, index) => (
               <Pressable
                 key={index}
                 style={styles.chip}
@@ -787,7 +770,7 @@ export default function Chat() {
           <View style={styles.messageWrapper}>
             <View style={[styles.bubble, styles.bubbleLoading]}>
               <ActivityIndicator size="small" color="#1117B1" />
-              <Text style={styles.loadingText}>IA está digitando...</Text>
+              <Text style={styles.loadingText}>{t("chat.ia_digitando")}</Text>
             </View>
           </View>
         )}
@@ -797,7 +780,7 @@ export default function Chat() {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Digite a sua pergunta...."
+            placeholder={t("chat.digite_pergunta")}
             placeholderTextColor="#666"
             value={textoAtual}
             onChangeText={setTextoAtual}
@@ -829,7 +812,7 @@ export default function Chat() {
           onPress={() => setModalMenuChatVisivel(false)}
         >
           <View style={styles.modalMenuContent}>
-            <Text style={styles.modalMenuTitle}>Opções da Conversa</Text>
+            <Text style={styles.modalMenuTitle}>{t("chat.opcoes_conversa")}</Text>
 
             <TouchableOpacity
               style={styles.modalMenuItem}
@@ -837,7 +820,7 @@ export default function Chat() {
             >
               <Ionicons name="trash-outline" size={20} color="#D9534F" />
               <Text style={[styles.modalMenuItemText, { color: "#D9534F" }]}>
-                Limpar Mensagens
+                {t("chat.limpar_mensagens")}
               </Text>
             </TouchableOpacity>
 
@@ -849,7 +832,7 @@ export default function Chat() {
               onPress={() => setModalMenuChatVisivel(false)}
             >
               <Text style={{ color: "#888", fontWeight: "bold" }}>
-                Cancelar
+                {t("chat.cancelar")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1234,9 +1217,6 @@ const styles = StyleSheet.create({
   modalAlertBtnTextDefault: {
     color: "#FFF",
   },
-  // ==========================================
-  // NOVOS ESTILOS PARA A BARRA DE SELEÇÃO
-  // ==========================================
   selectionActionBar: {
     flexDirection: "row",
     padding: 15,

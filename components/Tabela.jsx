@@ -1,16 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable, Alert } from "react-native";
-import ConfirmModal from "../components/ConfirmModal";
+import { View, Text, StyleSheet, ScrollView, Dimensions, Pressable } from "react-native";
+import ConfirmModal from "./ConfirmModal";
+import { useTranslation } from "react-i18next";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function Tabela({ data, onDelete, onEdit }) {
-  // Se não houver dados, não renderiza a estrutura para evitar bugs visuais
+  const { t, i18n } = useTranslation();
+  
   if (!data || data.length === 0) return null;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState(null);
-
 
   const nomeSelecionado = itemSelecionado?.nome || "";
 
@@ -21,13 +22,10 @@ export default function Tabela({ data, onDelete, onEdit }) {
 
   const confirmarDelete = () => {
     if (!itemSelecionado) return;
-
     const id = itemSelecionado.id;
     const nome = itemSelecionado.nome;
-
     setModalVisible(false);
     setItemSelecionado(null);
-
     onDelete(id, nome);
   };
 
@@ -35,11 +33,10 @@ export default function Tabela({ data, onDelete, onEdit }) {
     <View style={styles.wrapper}>
       <View style={styles.card}>
         <View style={{ flexDirection: "row" }}>
-
           {/* COLUNA FIXA (NOME) */}
           <View style={styles.fixedColumn}>
-            <Text style={styles.fixedHeader}>Nome</Text>
-            {data.map((item, index) => (
+            <Text style={styles.fixedHeader}>{t("componentes.tabela.col_nome")}</Text>
+            {data.map((item) => (
               <View key={item.id} style={styles.fixedRowContainer}>
                 <Text style={styles.fixedCell} numberOfLines={1} ellipsizeMode="tail">
                   {item.nome}
@@ -48,47 +45,34 @@ export default function Tabela({ data, onDelete, onEdit }) {
             ))}
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ flexGrow: 1 }}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
             <View style={{ flex: 1 }}>
               {/* HEADER DA TABELA */}
               <View style={styles.headerContainer}>
-                <Text style={[styles.headerText, { width: 70 }]}>Cód.</Text>
-                <Text style={[styles.headerText, { width: 110 }]}>Compra</Text>
-                <Text style={[styles.headerText, { width: 110 }]}>Venda</Text>
-                <Text style={[styles.headerText, { width: 80, textAlign: 'center' }]}>Estoque</Text>
-                <Text style={[styles.headerText, { width: 110 }]}>Mín/Máx</Text>
-                <Text style={[styles.headerText, { width: 110 }]}>Registro</Text>
-                {/* A Descrição usa flex: 1 para "sugar" todo o espaço branco restante */}
-                <Text style={[styles.headerText, { flex: 1, minWidth: 200 }]}>Descrição</Text>
-                <Text style={[styles.headerText, { width: 90, textAlign: 'center' }]}>Ação</Text>
+                <Text style={[styles.headerText, { width: 70 }]}>{t("componentes.tabela.col_cod")}</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>{t("componentes.tabela.col_compra")}</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>{t("componentes.tabela.col_venda")}</Text>
+                <Text style={[styles.headerText, { width: 80, textAlign: 'center' }]}>{t("componentes.tabela.col_estoque")}</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>{t("componentes.tabela.col_min_max")}</Text>
+                <Text style={[styles.headerText, { width: 110 }]}>{t("componentes.tabela.col_registro")}</Text>
+                <Text style={[styles.headerText, { flex: 1, minWidth: 200 }]}>{t("componentes.tabela.col_descricao")}</Text>
+                <Text style={[styles.headerText, { width: 90, textAlign: 'center' }]}>{t("componentes.tabela.col_acao")}</Text>
               </View>
 
               {/* LINHAS DA TABELA */}
-              {data.map((item, index) => (
+              {data.map((item) => (
                 <View key={item.id} style={styles.rowContainer}>
                   <Text style={[styles.cell, { width: 70 }]}>{item.codigo ?? "-"}</Text>
-
+                  
                   <Text style={[styles.cell, { width: 110 }]}>
-                    R$ {item.valorCompra?.toFixed(2) ?? "0.00"}
+                    {(item.valorCompra || 0).toLocaleString(i18n.language, { style: 'currency', currency: 'BRL' })}
                   </Text>
 
                   <Text style={[styles.cell, { width: 110 }]}>
-                    R$ {item.valorUnitario?.toFixed(2) ?? "0.00"}
+                    {(item.valorUnitario || 0).toLocaleString(i18n.language, { style: 'currency', currency: 'BRL' })}
                   </Text>
 
-                  <Text style={[
-                    styles.cell,
-                    {
-                      width: 80,
-                      textAlign: 'center',
-                      color: item.quantidade <= (item.quantidadeMin || 0) ? "#FFA000" : "#333",
-                      fontWeight: item.quantidade === 0 ? "bold" : "normal"
-                    }
-                  ]}>
+                  <Text style={[styles.cell, { width: 80, textAlign: 'center', color: item.quantidade <= (item.quantidadeMin || 0) ? "#FFA000" : "#333", fontWeight: item.quantidade === 0 ? "bold" : "normal" }]}>
                     {item.quantidade ?? "0"}
                   </Text>
 
@@ -97,14 +81,10 @@ export default function Tabela({ data, onDelete, onEdit }) {
                   </Text>
 
                   <Text style={[styles.cell, { width: 110 }]}>
-                    {item.dataRegistro ? new Date(item.dataRegistro).toLocaleDateString("pt-BR") : "-"}
+                    {item.dataRegistro ? new Date(item.dataRegistro).toLocaleDateString(i18n.language) : "-"}
                   </Text>
 
-                  <Text
-                    style={[styles.cell, { flex: 1, minWidth: 200 }]}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
+                  <Text style={[styles.cell, { flex: 1, minWidth: 200 }]} numberOfLines={1} ellipsizeMode="tail">
                     {item.descricao ?? "-"}
                   </Text>
 
@@ -125,9 +105,9 @@ export default function Tabela({ data, onDelete, onEdit }) {
 
       <ConfirmModal
         visible={modalVisible}
-        title="Excluir produto"
-        message={`Deseja excluir "${nomeSelecionado}"?`}
-        confirmText={"Excluir"}
+        title={t("componentes.tabela.modal_excluir_titulo")}
+        message={t("componentes.tabela.modal_excluir_msg", { nome: nomeSelecionado })}
+        confirmText={t("componentes.tabela.modal_excluir_confirmar")}
         onConfirm={confirmarDelete}
         onCancel={() => setModalVisible(false)}
       />
@@ -136,71 +116,14 @@ export default function Tabela({ data, onDelete, onEdit }) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginTop: 12,
-    marginBottom: 20,
-    width: '100%',
-  },
-  card: {
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    width: '100%',
-  },
-  fixedColumn: {
-    backgroundColor: "#fff",
-    zIndex: 10,
-    borderRightWidth: 1,
-    borderRightColor: "#eee",
-  },
-  fixedHeader: {
-    width: 150,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    backgroundColor: "#2C2FA3",
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 13,
-  },
-  fixedRowContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#eeeeee",
-    height: 52,
-    justifyContent: 'center',
-  },
-  fixedCell: {
-    width: 150,
-    paddingHorizontal: 12,
-    fontSize: 13,
-    color: "#333",
-  },
-  headerContainer: {
-    flexDirection: "row",
-    backgroundColor: "#2C2FA3",
-    height: 45,
-    alignItems: 'center',
-  },
-  headerText: {
-    paddingHorizontal: 10,
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 13,
-  },
-  rowContainer: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    height: 52,
-    alignItems: 'center',
-  },
-  cell: {
-    paddingHorizontal: 10,
-    fontSize: 13,
-    color: "#333",
-  },
+  wrapper: { marginTop: 12, marginBottom: 20, width: '100%' },
+  card: { borderRadius: 12, overflow: "hidden", backgroundColor: "#fff", elevation: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, width: '100%' },
+  fixedColumn: { backgroundColor: "#fff", zIndex: 10, borderRightWidth: 1, borderRightColor: "#eee" },
+  fixedHeader: { width: 150, paddingVertical: 14, paddingHorizontal: 12, backgroundColor: "#2C2FA3", color: "#fff", fontWeight: "bold", fontSize: 13 },
+  fixedRowContainer: { borderBottomWidth: 1, borderBottomColor: "#eeeeee", height: 52, justifyContent: 'center' },
+  fixedCell: { width: 150, paddingHorizontal: 12, fontSize: 13, color: "#333" },
+  headerContainer: { flexDirection: "row", backgroundColor: "#2C2FA3", height: 45, alignItems: 'center' },
+  headerText: { paddingHorizontal: 10, color: "#fff", fontWeight: "bold", fontSize: 13 },
+  rowContainer: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#eee", height: 52, alignItems: 'center' },
+  cell: { paddingHorizontal: 10, fontSize: 13, color: "#333" }
 });

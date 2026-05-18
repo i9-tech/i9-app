@@ -16,10 +16,12 @@ import api from "../../../provider/api";
 import { ENDPOINTS } from "../../../utils/endpoints";
 import { buscarUsuario, recuperarToken } from "../../../utils/storage";
 import CampoImagem from "../../../components/CampoImagem";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 
 export default function CadastroProduto() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const router = useRouter();
   const produtoId = params.id;
@@ -30,7 +32,6 @@ export default function CadastroProduto() {
   const [categorias, setCategorias] = useState([]);
   const [imagemSelecionada, setImagemSelecionada] = useState(null);
 
-  // Estado inicial tratando os valores que vem da URL
   const [produto, setProduto] = useState({
     codigo: params.codigo || "",
     nome: params.nome || "",
@@ -53,13 +54,13 @@ export default function CadastroProduto() {
   });
 
   useEffect(() => {
-    global.setHeaderTitulo(produtoId ? "Editar Produto" : "Novo Produto");
+    global.setHeaderTitulo(produtoId ? t("estoque.form.editar_produto") : t("estoque.form.novo_produto"));
     global.setHeaderSubTitulo(
       produtoId
-        ? `Editando: ${params.nome}`
-        : "Preencha os campos para cadastrar",
+        ? t("estoque.form.editando", { nome: params.nome })
+        : t("estoque.form.preencha_campos")
     );
-  }, [produtoId, params.nome]);
+  }, [produtoId, params.nome, t]);
 
   useEffect(() => {
     async function carregarDados() {
@@ -87,7 +88,6 @@ export default function CadastroProduto() {
   const formatarMoedaExibicao = (valor) => {
     const numero = parseFloat(valor || 0);
     return (
-      "R$ " +
       numero
         .toFixed(2)
         .replace(".", ",")
@@ -104,9 +104,59 @@ export default function CadastroProduto() {
   const handleSalvar = async () => {
     try {
       if (!usuario || !token) {
-        alert("Sessão expirada. Faça login novamente.");
+        alert(t("estoque.form.sessao_expirada"));
         return;
       }
+
+       const validarCampos = () => {
+        if (
+          !produto.codigo ||
+          !produto.nome ||
+          !produto.quantidade ||
+          !produto.categoria ||
+          !produto.setor
+        ) {
+          toast.error(t("estoque.form.campos_obrigatorios"));
+          return false;
+        }
+        if (
+          isNaN(produto.quantidade) ||
+          produto.quantidade < 0 ||
+          isNaN(produto.quantidadeMin) ||
+          produto.quantidadeMin < 0 ||
+          isNaN(produto.quantidadeMax) ||
+          produto.quantidadeMax < 0
+        ) {
+          toast.error(t("estoque.form.qtd_positiva"));
+          return false;
+        }
+
+        if (
+          produto.quantidadeMin !== "" &&
+          produto.quantidadeMax !== "" &&
+          Number(produto.quantidadeMax) <= Number(produto.quantidadeMin)
+        ) {
+          toast.error(t("estoque.form.qtd_max_min"));
+          return false;
+        }
+        const valorCompra = parseFloat(
+          String(produto.valorCompra).replace(/\./g, "").replace(",", ".")
+        );
+        const valorUnitario = parseFloat(
+          String(produto.valorUnitario).replace(/\./g, "").replace(",", ".")
+        );
+        if (
+          !isNaN(valorCompra) &&
+          !isNaN(valorUnitario) &&
+          valorUnitario <= valorCompra
+        ) {
+          toast.error(t("estoque.form.valor_unitario_compra"));
+          return false;
+        }
+        return true;
+      };
+
+      if (!validarCampos()) return;
 
       const idCategoria = produto.categoria?.id || produto.categoria;
       const idSetor = produto.setor?.id || produto.setor;
@@ -120,25 +170,21 @@ export default function CadastroProduto() {
         quantidadeMin: parseInt(produto.quantidadeMin),
         quantidadeMax: parseInt(produto.quantidadeMax),
         descricao: produto.descricao,
-        dataRegistro: new Date().toISOString().split('T')[0],
-        
+        dataRegistro: new Date().toISOString().split("T")[0],
         categoria: idCategoria ? { id: idCategoria } : null,
         setor: idSetor ? { id: idSetor } : null,
-        funcionario: { id: usuario.userId }
+        funcionario: { id: usuario.userId },
       };
-      
-      // console.log("JSON backend:", JSON.stringify(dados));
 
       const formData = new FormData();
-
       const requestBlob = new Blob([JSON.stringify(dados)], {
         type: "application/json",
       });
 
       formData.append(
-        produtoId ? "produtoParaEditar" : "produtoParaCadastrar", 
-        requestBlob, 
-        "request.json"
+        produtoId ? "produtoParaEditar" : "produtoParaCadastrar",
+        requestBlob,
+        "request.json",
       );
 
       if (imagemSelecionada && imagemSelecionada.uri) {
@@ -154,25 +200,29 @@ export default function CadastroProduto() {
         });
       }
 
-      const url = produtoId 
-        ? `${ENDPOINTS.PRODUTOS}/${produtoId}/${usuario.userId}` 
+      const url = produtoId
+        ? `${ENDPOINTS.PRODUTOS}/${produtoId}/${usuario.userId}`
         : `${ENDPOINTS.PRODUTOS}/${usuario.userId}`;
 
-      const response = await (produtoId ? api.patch : api.post)(url, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.status === 201 || response.status === 200) {
-        alert(produtoId ? "Produto editado com sucesso!" : "Produto cadastrado com sucesso!");
-        router.push("/estoque");
-      }
-
+      await executarComToast(
+        () =>
+          (produtoId ? api.patch : api.post)(url, formData, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }),
+        {
+          loadingMsg: produtoId ? t("estoque.form.msg_editando", { nome: produto.nome }) : t("estoque.form.msg_cadastrando", { nome: produto.nome }),
+          successMsg: produtoId ? t("estoque.form.sucesso_editado", { nome: produto.nome }) : t("estoque.form.sucesso_cadastrado", { nome: produto.nome }),
+          errorMsg: produtoId ? t("estoque.form.erro_editar", { nome: produto.nome }) : t("estoque.form.erro_cadastrar", { nome: produto.nome }),
+          onSuccess: () => {
+            router.push("/estoque");
+          },
+        }
+      );
     } catch (error) {
-      console.error("Erro ao salvar produto:", error.response?.data || error.message);
-      alert("Erro ao salvar produto! Verifique os dados.");
+      console.error(error.response?.data || error.message);
     }
   };
 
@@ -186,104 +236,95 @@ export default function CadastroProduto() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formularioCard}>
-          {/* IMAGEM */}
           <View style={{ alignItems: "center", marginBottom: 20 }}>
             <CampoImagem
-              label="Foto do Produto"
+              label={t("estoque.form.foto_produto")}
               imagemUri={imagemSelecionada?.uri}
               onImageSelected={setImagemSelecionada}
             />
           </View>
 
-          {/* CÓDIGO */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Código do Produto *</Text>
+            <Text style={styles.label}>{t("estoque.form.codigo")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex: 1009"
+              placeholder={t("estoque.form.ex_codigo")}
               keyboardType="numeric"
               value={String(produto.codigo)}
               onChangeText={(t) => setProduto({ ...produto, codigo: t })}
             />
           </View>
 
-          {/* QUANTIDADE */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Quantidade *</Text>
+            <Text style={styles.label}>{t("estoque.form.quantidade")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex: 80"
+              placeholder={t("estoque.form.ex_quantidade")}
               keyboardType="numeric"
               value={String(produto.quantidade)}
               onChangeText={(t) => setProduto({ ...produto, quantidade: t })}
             />
           </View>
 
-          {/* NOME */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nome *</Text>
+            <Text style={styles.label}>{t("estoque.form.nome")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex: Esfiha de carne"
+              placeholder={t("estoque.form.ex_nome")}
               value={produto.nome}
               onChangeText={(t) => setProduto({ ...produto, nome: t })}
             />
           </View>
 
-          {/* DESCRIÇÃO */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Descrição</Text>
+            <Text style={styles.label}>{t("estoque.form.descricao")}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Ex: Esfihas de carne temperadas"
+              placeholder={t("estoque.form.ex_descricao")}
               multiline
               value={produto.descricao}
               onChangeText={(t) => setProduto({ ...produto, descricao: t })}
             />
           </View>
 
-          {/* VALOR COMPRA */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Valor Compra *</Text>
+            <Text style={styles.label}>{t("estoque.form.valor_compra")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="R$ 0,00"
+              placeholder="0,00"
               keyboardType="numeric"
               value={formatarMoedaExibicao(produto.valorCompra)}
               onChangeText={(t) => handleMudarValor("valorCompra", t)}
             />
           </View>
 
-          {/* VALOR VENDA */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Valor Venda *</Text>
+            <Text style={styles.label}>{t("estoque.form.valor_venda")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="R$ 0,00"
+              placeholder="0,00"
               keyboardType="numeric"
               value={formatarMoedaExibicao(produto.valorUnitario)}
               onChangeText={(t) => handleMudarValor("valorUnitario", t)}
             />
           </View>
 
-          {/* QTD MIN */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Qtd Mínima *</Text>
+            <Text style={styles.label}>{t("estoque.form.qtd_minima")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex: 10"
+              placeholder={t("estoque.form.ex_qtd_minima")}
               keyboardType="numeric"
               value={String(produto.quantidadeMin)}
               onChangeText={(t) => setProduto({ ...produto, quantidadeMin: t })}
             />
           </View>
 
-          {/* QTD MAX */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Qtd Máxima *</Text>
+            <Text style={styles.label}>{t("estoque.form.qtd_maxima")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ex: 100"
+              placeholder={t("estoque.form.ex_qtd_maxima")}
               keyboardType="numeric"
               value={String(produto.quantidadeMax)}
               onChangeText={(t) => setProduto({ ...produto, quantidadeMax: t })}
@@ -295,11 +336,10 @@ export default function CadastroProduto() {
           <TouchableOpacity
             style={styles.btnSalvar}
             activeOpacity={0.8}
-            // onPress={() => console.log("Salvar produto:", produto)}
             onPress={handleSalvar}
           >
             <Text style={styles.btnTextSalvar}>
-              {produtoId ? "Editar" : "Cadastrar"}
+              {produtoId ? t("estoque.form.btn_editar") : t("estoque.form.btn_cadastrar")}
             </Text>
           </TouchableOpacity>
 
@@ -308,7 +348,7 @@ export default function CadastroProduto() {
             activeOpacity={0.8}
             onPress={() => router.back()}
           >
-            <Text style={styles.btnTextCancelar}>Cancelar</Text>
+            <Text style={styles.btnTextCancelar}>{t("estoque.form.cancelar")}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -317,90 +357,19 @@ export default function CadastroProduto() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#F2F2F2",
-  },
-  container: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  formularioCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    padding: 20,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    overflow: "visible",
-  },
-  inputGroup: {
-    marginBottom: 20,
-    width: "100%",
-  },
-  rowWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  inputGroupWrap: {
-    width: width < 500 ? "100%" : "48%",
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000000",
-    marginBottom: 8,
-  },
-  required: {
-    color: "red",
-  },
-  input: {
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#DDE2E5",
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#333",
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: "top",
-  },
-  botoesContainer: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 10,
-  },
-  btnSalvar: {
-    flex: 1,
-    backgroundColor: "#1E22AA",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  btnTextSalvar: {
-    color: "#FFF",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  btnCancelar: {
-    flex: 1,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#000",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  btnTextCancelar: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 16,
-  },
+  safe: { flex: 1, backgroundColor: "#F2F2F2" },
+  container: { padding: 16, paddingBottom: 40 },
+  formularioCard: { backgroundColor: "#FFFFFF", borderRadius: 8, padding: 20, elevation: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, overflow: "visible" },
+  inputGroup: { marginBottom: 20, width: "100%" },
+  rowWrap: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  inputGroupWrap: { width: width < 500 ? "100%" : "48%", marginBottom: 20 },
+  label: { fontSize: 16, fontWeight: "600", color: "#000000", marginBottom: 8 },
+  required: { color: "red" },
+  input: { backgroundColor: "#FFF", borderWidth: 1, borderColor: "#DDE2E5", borderRadius: 8, paddingHorizontal: 15, paddingVertical: 12, fontSize: 16, color: "#333" },
+  textArea: { height: 100, textAlignVertical: "top" },
+  botoesContainer: { flexDirection: "row", gap: 12, marginTop: 10 },
+  btnSalvar: { flex: 1, backgroundColor: "#1E22AA", padding: 15, borderRadius: 8, alignItems: "center" },
+  btnTextSalvar: { color: "#FFF", fontWeight: "700", fontSize: 16 },
+  btnCancelar: { flex: 1, backgroundColor: "#FFF", borderWidth: 1, borderColor: "#000", padding: 15, borderRadius: 8, alignItems: "center" },
+  btnTextCancelar: { color: "#000", fontWeight: "700", fontSize: 16 },
 });

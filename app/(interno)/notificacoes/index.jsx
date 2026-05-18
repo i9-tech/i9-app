@@ -7,8 +7,10 @@ import { Client } from '@stomp/stompjs';
 import api from "../../../provider/api";
 import { recuperarToken, buscarUsuario } from "../../../utils/storage";
 import { ENDPOINTS } from "../../../utils/endpoints";
+import { useTranslation } from "react-i18next";
 
 export default function Notificacoes() {
+  const { t, i18n } = useTranslation();
   const [notificacoes, setNotificacoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState('nao_lidas');
@@ -17,10 +19,8 @@ export default function Notificacoes() {
 
   useEffect(() => {
     if (global.setHeaderTitulo) {
-      global.setHeaderTitulo("Notificações");
-      global.setHeaderSubTitulo(
-        "Visualize as notificações de seu negócio em tempo real!"
-      );
+      global.setHeaderTitulo(t("notificacoes.header_titulo"));
+      global.setHeaderSubTitulo(t("notificacoes.header_subtitulo"));
     }
 
     const inicializar = async () => {
@@ -40,14 +40,12 @@ export default function Notificacoes() {
     };
 
     inicializar();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (token && usuario?.empresaId) {
       carregarNotificacoesDoServidor(token);
     }
-
-
   }, [token, usuario]);
 
   useEffect(() => {
@@ -55,7 +53,6 @@ export default function Notificacoes() {
   }, [usuario]);
 
   const carregarNotificacoesDoServidor = async (tokenAtual) => {
-
     if (!usuario?.empresaId) {
       console.log("Usuário sem empresaId");
       return;
@@ -121,7 +118,6 @@ export default function Notificacoes() {
 
   }, [token, usuario]);
 
-
   const marcarComoLido = async (id) => {
     try {
       await api.patch(`${ENDPOINTS.NOTIFICACOES}/${id}/lida`, {}, {
@@ -160,47 +156,40 @@ export default function Notificacoes() {
     let iconName = "notifications-outline";
     let iconColor = "#1E22AA";
 
-    // ESTOQUE
     if (texto.includes("PRODUTO") || texto.includes("ESTOQUE")) {
-
       if (texto.includes("CADASTRADO")) {
-        iconName = "cube-outline"; // produto novo
+        iconName = "cube-outline";
         iconColor = "#1E22AA";
       }
       else if (texto.includes("BAIXO")) {
-        iconName = "alert-circle-outline"; // atenção
+        iconName = "alert-circle-outline";
         iconColor = "#F29C11";
       }
       else if (texto.includes("ALTO")) {
-        iconName = "alert-circle-outline"; // atenção
+        iconName = "alert-circle-outline";
         iconColor = "#F29C11";
       }
       else if (texto.includes("SEM")) {
-        iconName = "alert-circle-outline";// crítico
+        iconName = "alert-circle-outline";
         iconColor = "#dc3545";
       }
       else if (texto.includes("REMOVIDO")) {
-        iconName = "trash-bin-outline"; // remoção
+        iconName = "trash-bin-outline";
         iconColor = "#dc3545";
       }
       else {
         iconName = "archive-outline";
       }
     }
-
-    // 💰 VENDA
     else if (texto.includes("VENDA")) {
-      iconName = "cash-outline"; // dinheiro direto
+      iconName = "cash-outline";
       iconColor = "#28a745";
     }
-
-    // 👤 FUNCIONÁRIO
     else if (
       texto.includes("COLABORADOR") ||
       texto.includes("FUNCIONÁRIO") ||
       texto.includes("FUNCIONARIO")
     ) {
-
       if (texto.includes("NOVO")) {
         iconName = "person-add-outline";
         iconColor = "#28a745";
@@ -214,20 +203,15 @@ export default function Notificacoes() {
         iconColor = "#6f42c1";
       }
     }
-
-    // fallback erro
     else if (texto.includes("ERRO") || texto.includes("FALHA")) {
       iconName = "alert-circle-outline";
       iconColor = "#dc3545";
     }
-
-    // sucesso geral
     else if (texto.includes("SUCESSO")) {
       iconName = "checkmark-circle-outline";
       iconColor = "#28a745";
     }
 
-    // se lida → cinza
     if (lida) {
       iconColor = "#999";
     }
@@ -252,19 +236,19 @@ export default function Notificacoes() {
             {item.mensagem}
           </Text>
           <Text style={styles.data}>
-            {new Date(item.dataCriacao).toLocaleString("pt-BR")}
+            {new Date(item.dataCriacao).toLocaleString(i18n.language)}
           </Text>
         </View>
 
         {abaAtiva === 'nao_lidas' ? (
           <TouchableOpacity style={styles.btnAcao} onPress={() => marcarComoLido(item.id)}>
             <Ionicons name="checkmark-circle-outline" size={26} color="#0F14B8" />
-            <Text style={[styles.textAcao, { color: "#0F14B8" }]}>Lido</Text>
+            <Text style={[styles.textAcao, { color: "#0F14B8" }]}>{t("notificacoes.btn_lido")}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.btnAcao} onPress={() => apagarNotificacao(item.id)}>
             <Ionicons name="trash-bin-outline" size={22} color="#dc3545" />
-            <Text style={[styles.textAcao, { color: "#dc3545" }]}>Apagar</Text>
+            <Text style={[styles.textAcao, { color: "#dc3545" }]}>{t("notificacoes.btn_apagar")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -279,7 +263,7 @@ export default function Notificacoes() {
           onPress={() => setAbaAtiva('nao_lidas')}
         >
           <Text style={[styles.tabText, abaAtiva === 'nao_lidas' && styles.tabTextActive]}>
-            Novas
+            {t("notificacoes.aba_novas")}
           </Text>
         </TouchableOpacity>
 
@@ -288,7 +272,7 @@ export default function Notificacoes() {
           onPress={() => setAbaAtiva('lidas')}
         >
           <Text style={[styles.tabText, abaAtiva === 'lidas' && styles.tabTextActive]}>
-            Lidas
+            {t("notificacoes.aba_lidas")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -304,8 +288,8 @@ export default function Notificacoes() {
           ListEmptyComponent={
             <Text style={styles.empty}>
               {abaAtiva === 'nao_lidas'
-                ? "Tudo em dia por aqui!"
-                : "Nenhuma notificação arquivada."}
+                ? t("notificacoes.empty_novas")
+                : t("notificacoes.empty_lidas")}
             </Text>
           }
         />
