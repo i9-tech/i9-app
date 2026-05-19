@@ -6,66 +6,215 @@ import {
   ScrollView,
   Pressable,
   StatusBar,
+  Dimensions,
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import api from "../../../provider/api";
+import { BarChart, PieChart } from "react-native-gifted-charts";
 import { ENDPOINTS } from "../../../utils/endpoints";
 import { buscarUsuario, recuperarToken } from "../../../utils/storage";
+import { useTranslation } from "react-i18next";
 
-// Configuração do calendário
-LocaleConfig.locales['pt-br'] = {
-  monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
-  monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
-  dayNames: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
-  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+LocaleConfig.locales["pt"] = {
+  monthNames: [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+  ],
+  monthNamesShort: [
+    "Jan",
+    "Fev",
+    "Mar",
+    "Abr",
+    "Mai",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Set",
+    "Out",
+    "Nov",
+    "Dez",
+  ],
+  dayNames: [
+    "Domingo",
+    "Segunda",
+    "Terça",
+    "Quarta",
+    "Quinta",
+    "Sexta",
+    "Sábado",
+  ],
+  dayNamesShort: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
 };
-LocaleConfig.defaultLocale = 'pt-br';
+
+LocaleConfig.locales["en"] = {
+  monthNames: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ],
+  monthNamesShort: [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ],
+  dayNames: [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ],
+  dayNamesShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+};
+
+LocaleConfig.locales["es"] = {
+  monthNames: [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ],
+  monthNamesShort: [
+    "Ene",
+    "Feb",
+    "Mar",
+    "Abr",
+    "May",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dic",
+  ],
+  dayNames: [
+    "Domingo",
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+  ],
+  dayNamesShort: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+};
+
+const screenWidth = Dimensions.get("window").width;
 
 export default function Dashboard() {
+  const { t, i18n } = useTranslation();
+  LocaleConfig.defaultLocale = i18n.language || "pt";
+
   const [usuario, setUsuario] = useState(null);
   const [token, setToken] = useState(null);
   const [exibirPratos, setExibirPratos] = useState(false);
   const [modalCalendario, setModalCalendario] = useState(false);
+  const [viewMode, setViewMode] = useState("kpis");
 
-  // Lógica de Período
-  const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0]);
-  const [dataFim, setDataFim] = useState(new Date().toISOString().split('T')[0]);
-  const [legendaAnterior, setLegendaAnterior] = useState("(1 dia atrás)");
+  const [dataInicio, setDataInicio] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [dataFim, setDataFim] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [legendaAnterior, setLegendaAnterior] = useState(
+    t("dashboard.dia_atras"),
+  );
   const [markedDates, setMarkedDates] = useState({});
 
-  // Estados dos KPIs
   const [lucroBruto, setLucroBruto] = useState(0);
   const [diferencaBruto, setDiferencaBruto] = useState(0);
   const [lucroLiquido, setLucroLiquido] = useState(0);
   const [liquidoMercadoria, setLiquidoMercadoria] = useState(0);
   const [quantidadeTotalVendida, setQuantidadeTotalVendida] = useState(0);
   const [diferencaVenda, setDiferencaVenda] = useState(0);
+
   const [dadosPratos, setDadosPratos] = useState([]);
   const [dadosProdutos, setDadosProdutos] = useState([]);
-  const [pratoMaisVendido, setPratoMaisVendido] = useState({ nome: "Nenhum", quantidadeVendida: 0 });
-  const [produtoMaisVendido, setProdutoMaisVendido] = useState({ nome: "Nenhum", quantidadeVendida: 0 });
+  const [dadosCategorias, setDadosCategorias] = useState([]);
+  const [setores, setSetores] = useState([]);
 
-  const formatarPT = (iso) => iso ? iso.split('-').reverse().join('/') : "";
+  const [pratoMaisVendido, setPratoMaisVendido] = useState({
+    nome: t("dashboard.nenhum"),
+    quantidadeVendida: 0,
+  });
+  const [produtoMaisVendido, setProdutoMaisVendido] = useState({
+    nome: t("dashboard.nenhum"),
+    quantidadeVendida: 0,
+  });
+
+  const formatarDataLocal = (iso) => {
+    if (!iso) return "";
+    const [ano, mes, dia] = iso.split("-");
+    if (i18n.language === "en") return `${mes}/${dia}/${ano}`;
+    return `${dia}/${mes}/${ano}`;
+  };
+
+  const formatarMoeda = (valor) => {
+    return valor.toLocaleString(i18n.language, {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
 
   useEffect(() => {
     const agora = new Date();
 
-    const dataFormatada = agora.toLocaleDateString("pt-BR", {
+    const dataFormatada = agora.toLocaleDateString(i18n.language, {
       day: "2-digit",
       month: "long",
       year: "numeric",
     });
 
-    const horaFormatada = agora.toLocaleTimeString("pt-BR", {
+    const horaFormatada = agora.toLocaleTimeString(i18n.language, {
       hour: "2-digit",
       minute: "2-digit",
     });
 
-    global.setHeaderTitulo("Dashboard");
+    global.setHeaderTitulo(t("dashboard.header_titulo"));
     global.setHeaderSubTitulo(`${dataFormatada} - ${horaFormatada}`);
-  }, []);
+  }, [t, i18n.language]);
 
   useEffect(() => {
     buscarUsuario().then((dados) => setUsuario(dados));
@@ -75,11 +224,15 @@ export default function Dashboard() {
   useEffect(() => {
     let marked = {};
     if (dataInicio) {
-      marked[dataInicio] = { startingDay: true, color: '#1E22AA', textColor: 'white' };
+      marked[dataInicio] = {
+        startingDay: true,
+        color: "#1E22AA",
+        textColor: "white",
+      };
     }
 
     if (!dataFim || dataInicio === dataFim) {
-      setLegendaAnterior("(1 dia atrás)");
+      setLegendaAnterior(t("dashboard.dia_atras"));
     } else {
       let start = new Date(dataInicio + "T00:00:00");
       let end = new Date(dataFim + "T00:00:00");
@@ -89,57 +242,108 @@ export default function Dashboard() {
       fimAnt.setDate(fimAnt.getDate() - 1);
       const iniAnt = new Date(fimAnt);
       iniAnt.setDate(iniAnt.getDate() - (diffDays - 1));
-      setLegendaAnterior(`(${formatarPT(iniAnt.toISOString().split('T')[0])} a ${formatarPT(fimAnt.toISOString().split('T')[0])})`);
+
+      setLegendaAnterior(
+        t("dashboard.periodo", {
+          inicio: formatarDataLocal(iniAnt.toISOString().split("T")[0]),
+          fim: formatarDataLocal(fimAnt.toISOString().split("T")[0]),
+        }),
+      );
 
       let curr = new Date(start);
       curr.setDate(curr.getDate() + 1);
       while (curr < end) {
-        let str = curr.toISOString().split('T')[0];
-        marked[str] = { color: '#e0e0ff', textColor: '#1E22AA' };
+        let str = curr.toISOString().split("T")[0];
+        marked[str] = { color: "#e0e0ff", textColor: "#1E22AA" };
         curr.setDate(curr.getDate() + 1);
       }
-      marked[dataFim] = { endingDay: true, color: '#1E22AA', textColor: 'white' };
+      marked[dataFim] = {
+        endingDay: true,
+        color: "#1E22AA",
+        textColor: "white",
+      };
     }
     setMarkedDates(marked);
-  }, [dataInicio, dataFim]);
+  }, [dataInicio, dataFim, t, i18n.language]);
 
   useEffect(() => {
     if (!usuario || !token) return;
     const headers = { Authorization: `Bearer ${token}` };
     const params = { dataInicio, dataFim: dataFim || dataInicio };
 
-    api.get(`${ENDPOINTS.VENDA_KPIS}/${usuario.userId}`, { headers, params }).then((res) => {
-      if (res.data && res.data[0]) {
-        const kpi = res.data[0];
-        setLucroBruto(kpi.lucroDiario || 0);
-        setDiferencaBruto((kpi.lucroDiario || 0) - (kpi.lucroDiarioOntem || 0));
-        setLucroLiquido(kpi.lucroLiquidoDiario || 0);
-        setLiquidoMercadoria(kpi.totalMercadoriaDiario || 0);
-        setQuantidadeTotalVendida(kpi.vendasDiaria || 0);
-        setDiferencaVenda((kpi.vendasDiaria || 0) - (kpi.vendasDiariaOntem || 0));
-      }
-    });
+    // KPI
+    api
+      .get(`${ENDPOINTS.VENDA_KPIS}/${usuario.userId}`, { headers, params })
+      .then((res) => {
+        if (res.data && res.data[0]) {
+          const kpi = res.data[0];
+          setLucroBruto(kpi.lucroDiario || 0);
+          setDiferencaBruto(
+            (kpi.lucroDiario || 0) - (kpi.lucroDiarioOntem || 0),
+          );
+          setLucroLiquido(kpi.lucroLiquidoDiario || 0);
+          setLiquidoMercadoria(kpi.totalMercadoriaDiario || 0);
+          setQuantidadeTotalVendida(kpi.vendasDiaria || 0);
+          setDiferencaVenda(
+            (kpi.vendasDiaria || 0) - (kpi.vendasDiariaOntem || 0),
+          );
+        }
+      });
 
-    api.get(`${ENDPOINTS.VENDA_TOP_PRATOS}/${usuario.userId}`, { headers, params }).then(res => {
-      const lista = res.data || [];
-      setDadosPratos(lista);
-      if (lista.length > 0) {
-        setPratoMaisVendido(lista.reduce((p, c) => (p.quantidadeVendida > c.quantidadeVendida ? p : c)));
-      } else {
-        setPratoMaisVendido({ nome: "Nenhum", quantidadeVendida: 0 });
-      }
-    });
+    // Top Pratos
+    api
+      .get(`${ENDPOINTS.VENDA_TOP_PRATOS}/${usuario.userId}`, {
+        headers,
+        params,
+      })
+      .then((res) => {
+        const lista = res.data || [];
+        setDadosPratos(lista);
+        if (lista.length > 0)
+          setPratoMaisVendido(
+            lista.reduce((p, c) =>
+              p.quantidadeVendida > c.quantidadeVendida ? p : c,
+            ),
+          );
+      });
 
-    api.get(`${ENDPOINTS.VENDA_TOP_PRODUTOS}/${usuario.userId}`, { headers, params }).then(res => {
-      const lista = res.data || [];
-      setDadosProdutos(lista);
-      if (lista.length > 0) {
-        setProdutoMaisVendido(lista.reduce((p, c) => (p.quantidadeVendida > c.quantidadeVendida ? p : c)));
-      } else {
-        setProdutoMaisVendido({ nome: "Nenhum", quantidadeVendida: 0 });
-      }
-    });
-  }, [usuario, token, dataInicio, dataFim]);
+    // Top Produtos
+    api
+      .get(`${ENDPOINTS.VENDA_TOP_PRODUTOS}/${usuario.userId}`, {
+        headers,
+        params,
+      })
+      .then((res) => {
+        const lista = res.data || [];
+        setDadosProdutos(lista);
+        if (lista.length > 0)
+          setProdutoMaisVendido(
+            lista.reduce((p, c) =>
+              p.quantidadeVendida > c.quantidadeVendida ? p : c,
+            ),
+          );
+      });
+
+    // Top Categorias (NOVO)
+    api
+      .get(`${ENDPOINTS.VENDA_TOP_CATEGORIAS}/${usuario.userId}`, {
+        headers,
+        params,
+      })
+      .then((res) => {
+        setDadosCategorias(res.data || []);
+      });
+
+    // Setores (NOVO)
+    api
+      .get(`${ENDPOINTS.VENDA_RANKING_SETORES}/${usuario.userId}`, {
+        headers,
+        params,
+      })
+      .then((res) => {
+        setSetores(res.data || []);
+      });
+  }, [usuario, token, dataInicio, dataFim, t]);
 
   const onDayPress = (day) => {
     if (!dataInicio || (dataInicio && dataFim)) {
@@ -155,26 +359,55 @@ export default function Dashboard() {
     }
   };
 
-  const CardResumo = ({ cor, titulo, valor, subtitulo, diferenca, isMoeda, mostrarToggle, mostrarLegendaAnterior }) => (
+  const CardResumo = ({
+    cor,
+    titulo,
+    valor,
+    subtitulo,
+    diferenca,
+    isMoeda,
+    mostrarToggle,
+    mostrarLegendaAnterior,
+  }) => (
     <View style={styles.card}>
       <View style={[styles.barraStatus, { backgroundColor: cor }]} />
       <View style={styles.cardInfo}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Text style={styles.cardLabel}>{titulo}</Text>
           {mostrarToggle && (
-            <Pressable onPress={() => setExibirPratos(!exibirPratos)} style={styles.botaoTrocaCard}>
+            <Pressable
+              onPress={() => setExibirPratos(!exibirPratos)}
+              style={styles.botaoTrocaCard}
+            >
               <Ionicons name="repeat" size={18} color="#1E22AA" />
             </Pressable>
           )}
         </View>
         <Text style={styles.cardValue}>{valor}</Text>
         <View style={styles.containerSubtitulo}>
-          <Text style={[styles.cardSubtitulo, { color: diferenca >= 0 ? "#41c482" : "#d35757" }]}>
+          <Text
+            style={[
+              styles.cardSubtitulo,
+              { color: diferenca >= 0 ? "#41c482" : "#d35757" },
+            ]}
+          >
             {diferenca !== undefined && (
-              <Text style={{ fontWeight: 'bold' }}>{diferenca >= 0 ? "+" : ""}{isMoeda ? diferenca.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : diferenca} </Text>
+              <Text style={{ fontWeight: "bold" }}>
+                {diferenca >= 0 ? "+" : ""}
+                {isMoeda ? formatarMoeda(diferenca) : diferenca}{" "}
+              </Text>
             )}
             <Text style={styles.cardSubtituloBase}>
-              {subtitulo} {mostrarLegendaAnterior && <Text style={styles.txtPeriodoLinha}>{legendaAnterior}</Text>}
+              {subtitulo}{" "}
+              {mostrarLegendaAnterior && (
+                <Text style={styles.txtPeriodoLinha}>{legendaAnterior}</Text>
+              )}
             </Text>
           </Text>
         </View>
@@ -182,68 +415,413 @@ export default function Dashboard() {
     </View>
   );
 
+  const azulWeb = "#3fa2f7";
+  const coresDonutGifted = [
+    "#3fa2f7",
+    "#41c482",
+    "#f0b731",
+    "#C60018",
+    "#6f6df1",
+  ];
+
+  const maxPratos = Math.max(0, ...dadosPratos.map((p) => p.quantidadeVendida));
+  const dataBarPratos = dadosPratos.slice(0, 7).map((p) => ({
+    value: p.quantidadeVendida,
+    label: p.nome.split(" ")[0],
+    frontColor: azulWeb,
+    topLabelComponent: () => (
+      <Text
+        style={{
+          color: "#333",
+          fontSize: 13,
+          marginBottom: 4,
+          fontWeight: "bold",
+        }}
+      >
+        {p.quantidadeVendida}
+      </Text>
+    ),
+  }));
+
+  const maxProdutos = Math.max(
+    0,
+    ...dadosProdutos.map((p) => p.quantidadeVendida),
+  );
+  const dataBarProdutos = dadosProdutos.slice(0, 7).map((p) => ({
+    value: p.quantidadeVendida,
+    label: p.nome.split(" ")[0],
+    frontColor: azulWeb,
+    topLabelComponent: () => (
+      <Text
+        style={{
+          color: "#333",
+          fontSize: 13,
+          marginBottom: 4,
+          fontWeight: "bold",
+        }}
+      >
+        {p.quantidadeVendida}
+      </Text>
+    ),
+  }));
+
+  const totalDonutGifted = dadosCategorias
+    .slice(0, 5)
+    .reduce((acc, item) => acc + Number(item.totalVendido), 0);
+
+  const dataDonut = dadosCategorias.slice(0, 5).map((c, idx) => {
+    const valor = Number(c.totalVendido);
+    const porcentagem =
+      totalDonutGifted > 0
+        ? Math.round((valor / totalDonutGifted) * 100) + "%"
+        : "0%";
+    return {
+      value: valor,
+      color: coresDonutGifted[idx % coresDonutGifted.length],
+      text: porcentagem,
+    };
+  });
+
   return (
     <View style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
       <ScrollView contentContainerStyle={styles.container}>
-
         <View style={styles.filtroContainer}>
           <Pressable
-            style={({ pressed }) => [styles.btnFiltroModerno, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [
+              styles.btnFiltroModerno,
+              pressed && { opacity: 0.8 },
+            ]}
             onPress={() => setModalCalendario(true)}
           >
             <View style={styles.iconeCirculo}>
               <Ionicons name="calendar" size={18} color="#fff" />
             </View>
             <View style={styles.textoFiltroContainer}>
-              <Text style={styles.txtLabelFiltro}>PERÍODO DE ANÁLISE</Text>
-              <Text style={styles.txtDataAtual}>{formatarPT(dataInicio)} — {formatarPT(dataFim || dataInicio)}</Text>
+              <Text style={styles.txtLabelFiltro}>
+                {t("dashboard.periodo_analise")}
+              </Text>
+              <Text style={styles.txtDataAtual}>
+                {formatarDataLocal(dataInicio)} —{" "}
+                {formatarDataLocal(dataFim || dataInicio)}
+              </Text>
             </View>
             <Ionicons name="chevron-down" size={20} color="#1E22AA" />
           </Pressable>
         </View>
 
-        <View style={styles.cardRow}>
-          <CardResumo cor="#6f6df1" titulo="Faturamento Estimado" valor={lucroBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} diferenca={diferencaBruto} isMoeda={true} subtitulo="em relação ao período anterior" mostrarLegendaAnterior={true} />
-          <CardResumo cor="#41c482" titulo="Vendas Realizadas" valor={`${quantidadeTotalVendida} vendas`} diferenca={diferencaVenda} isMoeda={false} subtitulo="em relação ao período anterior" mostrarLegendaAnterior={true} />
-          <CardResumo cor="#f0b731" titulo="Lucro Bruto" valor={lucroLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} subtitulo={`${liquidoMercadoria.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em produtos`} />
-          <CardResumo cor="#C60018" titulo={exibirPratos ? "Prato Mais Vendido" : "Produto Mais Vendido"} valor={exibirPratos ? pratoMaisVendido.nome : produtoMaisVendido.nome} subtitulo={`${exibirPratos ? pratoMaisVendido.quantidadeVendida : produtoMaisVendido.quantidadeVendida} unidades vendidas`} mostrarToggle={true} />
+        {/* TOGGLE SWITCH: KPIs | Gráficos */}
+        <View style={styles.toggleContainer}>
+          <Pressable
+            style={[
+              styles.toggleButton,
+              viewMode === "kpis" && styles.toggleButtonActive,
+            ]}
+            onPress={() => setViewMode("kpis")}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                viewMode === "kpis" && styles.toggleTextActive,
+              ]}
+            >
+              {t("dashboard.kpis")}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.toggleButton,
+              viewMode === "graficos" && styles.toggleButtonActive,
+            ]}
+            onPress={() => setViewMode("graficos")}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                viewMode === "graficos" && styles.toggleTextActive,
+              ]}
+            >
+              {t("dashboard.graficos")}
+            </Text>
+          </Pressable>
         </View>
 
-        <View style={styles.secaoBranca}>
-          <View style={styles.headerRanking}>
-            <Text style={styles.tituloSecao}>TOP 7 {exibirPratos ? "Pratos" : "Produtos"} mais vendidos</Text>
-            <Pressable onPress={() => setExibirPratos(!exibirPratos)} style={styles.botaoTrocaRanking}>
-              <Ionicons name="repeat" size={20} color="#1E22AA" />
-            </Pressable>
-          </View>
-
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, { flex: 1 }]}>ITEM</Text>
-            <Text style={styles.tableHeaderText}>QTD. VENDIDA</Text>
-          </View>
-
-          {(exibirPratos ? dadosPratos : dadosProdutos).slice(0, 7).map((item, index, arr) => (
-            <View key={index} style={[styles.itemRanking, index === arr.length - 1 && { borderBottomWidth: 0 }]}>
-              <Text style={styles.nomeItem} numberOfLines={1}>{item.nome}</Text>
-              <Text style={styles.statusNumber}>{item.quantidadeVendida}</Text>
+        {/* CONTEÚDO DINÂMICO BASEADO NO TOGGLE */}
+        {viewMode === "kpis" ? (
+          <>
+            <View style={styles.cardRow}>
+              <CardResumo
+                cor="#6f6df1"
+                titulo={t("dashboard.faturamento_estimado")}
+                valor={formatarMoeda(lucroBruto)}
+                diferenca={diferencaBruto}
+                isMoeda={true}
+                subtitulo={t("dashboard.em_relacao_anterior")}
+                mostrarLegendaAnterior={true}
+              />
+              <CardResumo
+                cor="#41c482"
+                titulo={t("dashboard.vendas_realizadas")}
+                valor={t("dashboard.vendas", { count: quantidadeTotalVendida })}
+                diferenca={diferencaVenda}
+                isMoeda={false}
+                subtitulo={t("dashboard.em_relacao_anterior")}
+                mostrarLegendaAnterior={true}
+              />
+              <CardResumo
+                cor="#f0b731"
+                titulo={t("dashboard.lucro_bruto")}
+                valor={formatarMoeda(lucroLiquido)}
+                subtitulo={t("dashboard.em_produtos", {
+                  valor: formatarMoeda(liquidoMercadoria),
+                })}
+              />
+              <CardResumo
+                cor="#C60018"
+                titulo={
+                  exibirPratos
+                    ? t("dashboard.prato_mais_vendido")
+                    : t("dashboard.produto_mais_vendido")
+                }
+                valor={
+                  exibirPratos ? pratoMaisVendido.nome : produtoMaisVendido.nome
+                }
+                subtitulo={t("dashboard.unidades_vendidas", {
+                  count: exibirPratos
+                    ? pratoMaisVendido.quantidadeVendida
+                    : produtoMaisVendido.quantidadeVendida,
+                })}
+                mostrarToggle={true}
+              />
             </View>
-          ))}
-        </View>
-      </ScrollView>
 
+            <View style={styles.secaoBranca}>
+              <View style={styles.headerRanking}>
+                <Text style={styles.tituloSecao}>
+                  {exibirPratos
+                    ? t("dashboard.top_pratos")
+                    : t("dashboard.top_produtos")}
+                </Text>
+                <Pressable
+                  onPress={() => setExibirPratos(!exibirPratos)}
+                  style={styles.botaoTrocaRanking}
+                >
+                  <Ionicons name="repeat" size={20} color="#1E22AA" />
+                </Pressable>
+              </View>
+
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, { flex: 1 }]}>
+                  {t("dashboard.tabela_item")}
+                </Text>
+                <Text style={styles.tableHeaderText}>
+                  {t("dashboard.tabela_qtd")}
+                </Text>
+              </View>
+
+              {(exibirPratos ? dadosPratos : dadosProdutos)
+                .slice(0, 7)
+                .map((item, index, arr) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.itemRanking,
+                      index === arr.length - 1 && { borderBottomWidth: 0 },
+                    ]}
+                  >
+                    <Text style={styles.nomeItem} numberOfLines={1}>
+                      {item.nome}
+                    </Text>
+                    <Text style={styles.statusNumber}>
+                      {item.quantidadeVendida}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          </>
+        ) : (
+          <View style={{ gap: 15, paddingBottom: 20 }}>
+            {/* GRÁFICO DE BARRAS - PRATOS */}
+            <View style={styles.secaoBranca}>
+              <Text style={styles.tituloSecao}>
+                {t("dashboard.top_pratos")}
+              </Text>
+              {dadosPratos.length > 0 ? (
+                <View style={{ marginTop: 25, alignItems: "center", overflow: "hidden" }}>
+                  <BarChart
+                    data={dataBarPratos}
+                    width={screenWidth - 90}
+                    barWidth={40}
+                    spacing={16}
+                    initialSpacing={10}
+                    hideRules
+                    topRadius={4}
+                    xAxisThickness={1}
+                    xAxisColor="#e0e0e0"
+                    yAxisThickness={0}
+                    yAxisTextStyle={{ color: "#888", fontSize: 11 }}
+                    noOfSections={4}
+                    maxValue={maxProdutos + 2}
+                  />
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>
+                  {t("dashboard.sem_dados")}
+                </Text>
+              )}
+            </View>
+
+            {/* GRÁFICO DE BARRAS - PRODUTOS */}
+            <View style={styles.secaoBranca}>
+              <Text style={styles.tituloSecao}>
+                {t("dashboard.top_produtos")}
+              </Text>
+              {dadosProdutos.length > 0 ? (
+                <View style={{ marginTop: 25, alignItems: "center", overflow: "hidden" }}>
+                  <BarChart
+                    data={dataBarProdutos}
+                    width={screenWidth - 90}
+                    barWidth={40}
+                    spacing={16}
+                    initialSpacing={10}
+                    hideRules
+                    topRadius={4}
+                    xAxisThickness={1}
+                    xAxisColor="#e0e0e0"
+                    yAxisThickness={0}
+                    yAxisTextStyle={{ color: "#888", fontSize: 11 }}
+                    noOfSections={4}
+                    maxValue={maxProdutos + 2}
+                  />
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>
+                  {t("dashboard.sem_dados")}
+                </Text>
+              )}
+            </View>
+
+            {/* GRÁFICO DONUT - CATEGORIAS */}
+            <View style={styles.secaoBranca}>
+              <Text style={styles.tituloSecao}>
+                {t("dashboard.top_categorias")}
+              </Text>
+              {dadosCategorias.length > 0 ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginTop: 20,
+                  }}
+                >
+                  {/* Legenda Customizada com o Valor */}
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    {dadosCategorias.slice(0, 5).map((c, idx) => (
+                      <View
+                        key={idx}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 7,
+                            backgroundColor:
+                              coresDonutGifted[idx % coresDonutGifted.length],
+                            marginRight: 8,
+                          }}
+                        />
+                        <View style={{ flexShrink: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              color: "#333",
+                              fontWeight: "600",
+                            }}
+                          >
+                            {c.nomeCategoria}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: "#666" }}>
+                            {formatarMoeda(Number(c.totalVendido))}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Gráfico Donut */}
+                  <PieChart
+                    donut
+                    innerRadius={45}
+                    radius={88}
+                    data={dataDonut}
+                    showText={true}
+                    labelsPosition="outward"
+                    textColor="#000"
+                    textSize={10}
+                    fontWeight="bold"
+                    centerLabelComponent={() => {
+                      return (
+                        <View
+                          style={{
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, color: "#666" }}>
+                            Total
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 15,
+                              fontWeight: "bold",
+                              color: "#333",
+                            }}
+                          >
+                            {formatarMoeda(totalDonutGifted)}
+                          </Text>
+                        </View>
+                      );
+                    }}
+                  />
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>
+                  {t("dashboard.sem_dados") || "Nenhum dado disponível"}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+      </ScrollView>
       <Modal visible={modalCalendario} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitulo}>Selecione o Intervalo</Text>
+            <Text style={styles.modalTitulo}>
+              {t("dashboard.selecione_intervalo")}
+            </Text>
             <Calendar
-              markingType={'period'}
+              markingType={"period"}
               markedDates={markedDates}
               onDayPress={onDayPress}
-              theme={{ selectedDayBackgroundColor: '#1E22AA', todayTextColor: '#1E22AA', arrowColor: '#1E22AA' }}
+              theme={{
+                selectedDayBackgroundColor: "#1E22AA",
+                todayTextColor: "#1E22AA",
+                arrowColor: "#1E22AA",
+              }}
             />
-            <Pressable style={styles.btnConfirmar} onPress={() => dataInicio && setModalCalendario(false)}>
-              <Text style={styles.btnConfirmarTxt}>APLICAR FILTRO</Text>
+            <Pressable
+              style={styles.btnConfirmar}
+              onPress={() => dataInicio && setModalCalendario(false)}
+            >
+              <Text style={styles.btnConfirmarTxt}>
+                {t("dashboard.aplicar_filtro")}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -252,46 +830,187 @@ export default function Dashboard() {
   );
 }
 
+const chartConfig = {
+  backgroundGradientFrom: "#fff",
+  backgroundGradientTo: "#fff",
+  color: (opacity = 1) => `rgba(30, 34, 170, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(68, 68, 68, ${opacity})`,
+  barPercentage: 0.6,
+  decimalPlaces: 0,
+};
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#f2f2f2" },
   container: { padding: 16 },
-
-  // FILTRO
   filtroContainer: { marginBottom: 10 },
-  btnFiltroModerno: { flexDirection: 'row', backgroundColor: '#fff', padding: 10, borderRadius: 8, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, borderWidth: 1, borderColor: '#e6e6e6' },
-  iconeCirculo: { backgroundColor: '#1E22AA', width: 36, height: 36, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  toggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "#e0e0e0",
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 15,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: "#fff",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  toggleText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "bold",
+  },
+  toggleTextActive: {
+    color: "#1E22AA",
+  },
+  chartStyle: {
+    marginTop: 10,
+    borderRadius: 12,
+  },
+  noDataText: {
+    textAlign: "center",
+    color: "#999",
+    marginTop: 20,
+    marginBottom: 10,
+    fontStyle: "italic",
+  },
+  btnFiltroModerno: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: "#e6e6e6",
+  },
+  iconeCirculo: {
+    backgroundColor: "#1E22AA",
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
   textoFiltroContainer: { flex: 1 },
-  txtLabelFiltro: { fontSize: 10, color: '#888', fontWeight: 'bold' },
-  txtDataAtual: { fontSize: 14, color: '#1E22AA', fontWeight: 'bold' },
+  txtLabelFiltro: { fontSize: 10, color: "#888", fontWeight: "bold" },
+  txtDataAtual: { fontSize: 14, color: "#1E22AA", fontWeight: "bold" },
 
-  // CARDS 
   cardRow: { gap: 10, marginVertical: 10 },
-  card: { backgroundColor: "#fff", borderRadius: 12, minHeight: 95, flexDirection: "row", elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3 },
-  barraStatus: { width: 10, height: "100%", borderTopLeftRadius: 12, borderBottomLeftRadius: 12 },
-  cardInfo: { flex: 1, paddingHorizontal: 15, justifyContent: "center", paddingVertical: 10 },
-  cardValue: { fontWeight: "bold", fontSize: 16, color: "#333", textAlign: 'left' },
-  cardLabel: { fontSize: 12, color: "#666", textAlign: 'left' },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    minHeight: 95,
+    flexDirection: "row",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  barraStatus: {
+    width: 10,
+    height: "100%",
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  cardInfo: {
+    flex: 1,
+    paddingHorizontal: 15,
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  cardValue: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#333",
+    textAlign: "left",
+  },
+  cardLabel: { fontSize: 12, color: "#666", textAlign: "left" },
 
-  containerSubtitulo: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  containerSubtitulo: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
   cardSubtitulo: { fontSize: 11 },
   cardSubtituloBase: { color: "#999" },
   txtPeriodoLinha: { fontSize: 10, color: "#bbb" },
 
-  // RANKING / TABELA
-  secaoBranca: { backgroundColor: "#fff", borderRadius: 12, padding: 16, marginTop: 10, elevation: 3 },
-  headerRanking: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15 },
+  secaoBranca: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 10,
+    elevation: 3,
+  },
+  headerRanking: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
   tituloSecao: { fontSize: 15, fontWeight: "bold", color: "#444" },
-  botaoTrocaRanking: { padding: 8, borderRadius: 8, backgroundColor: "#f0f0ff" },
-  tableHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: '#f2f2f2', marginBottom: 5 },
-  tableHeaderText: { fontSize: 10, fontWeight: '800', color: '#aaa', letterSpacing: 1 },
-  itemRanking: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f2f2f2" },
+  botaoTrocaRanking: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f0f0ff",
+  },
+  tableHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: "#f2f2f2",
+    marginBottom: 5,
+  },
+  tableHeaderText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#aaa",
+    letterSpacing: 1,
+  },
+  itemRanking: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f2f2f2",
+  },
   nomeItem: { fontSize: 14, color: "#333", flex: 1 },
   statusNumber: { fontWeight: "bold", fontSize: 16, color: "#1E22AA" },
 
   botaoTrocaCard: { padding: 4 },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 16 },
-  modalTitulo: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  btnConfirmar: { backgroundColor: '#1E22AA', padding: 14, borderRadius: 10, marginTop: 15, alignItems: 'center' },
-  btnConfirmarTxt: { color: '#fff', fontWeight: 'bold' }
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: { backgroundColor: "#fff", borderRadius: 12, padding: 16 },
+  modalTitulo: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  btnConfirmar: {
+    backgroundColor: "#1E22AA",
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 15,
+    alignItems: "center",
+  },
+  btnConfirmarTxt: { color: "#fff", fontWeight: "bold" },
 });

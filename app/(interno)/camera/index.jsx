@@ -4,6 +4,7 @@ import { WebView } from "react-native-webview";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as DocumentPicker from "expo-document-picker";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import api from "../../../provider/api";
 import Modal from "../../../components/Modal";
@@ -11,6 +12,7 @@ import Toast from "../../../components/Toast";
 import { recuperarToken } from "../../../utils/storage";
 
 export default function Camera() {
+  const { t } = useTranslation();
   const [permissao, solicitarPermissao] = useCameraPermissions();
   const [escaneado, setEscaneado] = useState(false);
   const [modalVisivel, setModalVisivel] = useState(true);
@@ -25,9 +27,9 @@ export default function Camera() {
   });
 
   useEffect(() => {
-    global.setHeaderTitulo("Câmera");
-    global.setHeaderSubTitulo("Escaneie a nota fiscal para adicionar os produtos");
-  }, []);
+    global.setHeaderTitulo(t("camera.header_titulo"));
+    global.setHeaderSubTitulo(t("camera.header_subtitulo"));
+  }, [t]);
 
   // 🔥 TOAST
   const mostrarToast = (message, type = "success") => {
@@ -77,10 +79,10 @@ export default function Camera() {
   // 🔥 MODAL PERMISSÃO
   if (!permissao.granted && modalVisivel) {
     return (
-      <Modal titulo="Permissão Necessária">
+      <Modal titulo={t("camera.permissao_titulo")}>
         <View style={styles.modalContent}>
           <Text style={styles.textoPermissaoModal}>
-            Precisamos da sua permissão para acessar a câmera.
+            {t("camera.permissao_texto")}
           </Text>
           <Pressable
             style={styles.botaoPrincipal}
@@ -89,7 +91,9 @@ export default function Camera() {
               setModalVisivel(false);
             }}
           >
-            <Text style={styles.textoBotaoPrincipal}>Conceder Permissão</Text>
+            <Text style={styles.textoBotaoPrincipal}>
+              {t("camera.conceder_permissao")}
+            </Text>
           </Pressable>
         </View>
       </Modal>
@@ -106,7 +110,7 @@ export default function Camera() {
       console.log("CHAVE:", chave);
 
       if (!chave) {
-        mostrarToast("QR inválido", "error");
+        mostrarToast(t("camera.qr_invalido"), "error");
         return;
       }
 
@@ -115,7 +119,7 @@ export default function Camera() {
       setUrlConsulta(url);
     } catch (error) {
       console.log(error);
-      mostrarToast("Erro ao abrir consulta", "error");
+      mostrarToast(t("camera.erro_abrir_consulta"), "error");
     } finally {
       setTimeout(() => setEscaneado(false), 3000);
     }
@@ -124,7 +128,7 @@ export default function Camera() {
   // 🔥 PROCESSAR HTML
   const processarHTML = async (html) => {
     try {
-      mostrarToast("Processando nota...", "loading");
+      mostrarToast(t("camera.processando_nota"), "loading");
       const token = await recuperarToken();
 
       const response = await api.post(
@@ -134,11 +138,11 @@ export default function Camera() {
       );
 
       console.log("NOTA PROCESSADA:", response.data);
-      mostrarToast("Nota fiscal processada!", "success");
+      mostrarToast(t("camera.nota_processada"), "success");
       setUrlConsulta(null);
     } catch (error) {
       console.log("ERRO:", error?.response?.data);
-      mostrarToast("Erro ao processar nota", "error");
+      mostrarToast(t("camera.erro_processar"), "error");
     }
   };
 
@@ -157,7 +161,7 @@ export default function Camera() {
 
   // 🔥 ENVIAR EXCEL
   const enviarArquivo = async (arquivo) => {
-    mostrarToast("Enviando arquivo...", "loading");
+    mostrarToast(t("camera.enviando_arquivo"), "loading");
     const formData = new FormData();
     formData.append("file", arquivo.file);
 
@@ -165,13 +169,13 @@ export default function Camera() {
       const response = await api.post("/upload", formData);
 
       if (response.data.status === "sucesso") {
-        mostrarToast("ETL realizado com sucesso!", "success");
+        mostrarToast(t("camera.etl_sucesso"), "success");
       } else {
-        mostrarToast("Erro ao processar arquivo", "error");
+        mostrarToast(t("camera.erro_processar"), "error");
       }
     } catch (error) {
       console.log("ERRO REAL:", error.response?.data);
-      mostrarToast("Erro ao enviar arquivo", "error");
+      mostrarToast(t("camera.erro_enviar"), "error");
     }
   };
 
@@ -211,9 +215,9 @@ export default function Camera() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Ionicons name="camera" size={22} color="#111" />
-          <Text style={styles.titulo}>Ler nota fiscal</Text>
+          <Text style={styles.titulo}>{t("camera.ler_nota")}</Text>
         </View>
-        <Text style={styles.subtitulo}>Aponte a câmera ou envie um arquivo Excel</Text>
+        <Text style={styles.subtitulo}>{t("camera.aponte_camera")}</Text>
       </View>
 
       <View style={styles.cameraContainer}>
@@ -227,8 +231,8 @@ export default function Camera() {
 
       <Pressable style={styles.uploadBox} onPress={selecionarArquivo}>
         <Ionicons name="cloud-upload-outline" size={28} color="#0F14B8" />
-        <Text style={styles.uploadTitle}>Enviar nota fiscal</Text>
-        <Text style={styles.uploadSubtitle}>Toque para selecionar o arquivo Excel</Text>
+        <Text style={styles.uploadTitle}>{t("camera.enviar_nota")}</Text>
+        <Text style={styles.uploadSubtitle}>{t("camera.toque_selecionar")}</Text>
       </Pressable>
     </View>
   );

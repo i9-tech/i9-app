@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TextInput,
-  Alert,
   ImageBackground,
   StyleSheet,
   KeyboardAvoidingView,
@@ -15,13 +14,21 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import FUNDO from "../assets/login-fundo.png";
 import api from "../provider/api";
-import { salvarToken, salvarUsuario, verificarLogin } from "../utils/storage";
+import {
+  salvarToken,
+  salvarUsuario,
+  verificarLogin,
+  salvarIdioma,
+} from "../utils/storage";
 import { ENDPOINTS } from "../utils/endpoints";
 import ModalEsqueceuSenha from "../components/ModalEsqueceuSenha";
 import ModalEsqueceuSenhaSucesso from "../components/ModalEsqueceuSenhaSucesso";
 import Toast from "../components/Toast";
+import Modal from "../components/Modal";
+import { useTranslation } from "react-i18next";
 
 export default function Home() {
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const navigationState = useRootNavigationState();
 
@@ -29,10 +36,10 @@ export default function Home() {
   const [senha, setSenha] = useState("");
   const [logado, setLogado] = useState(false);
   const [ocultarSenha, setOcultarSenha] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
+
   const [modalSenhaVisible, setModalSenhaVisible] = useState(false);
   const [modalSucessoVisible, setModalSucessoVisible] = useState(false);
-  const [isEnviandoSenha, setIsEnviandoSenha] = useState(false);
+  const [modalIdiomaVisivel, setModalIdiomaVisivel] = useState(false);
 
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -94,15 +101,30 @@ export default function Home() {
         throw error;
       }
     },
-    [showToast]
+    [showToast],
   );
+
+  /* =========================
+      MUDAR IDIOMA
+  ========================= */
+  const handleMudarIdioma = async (lang) => {
+    i18n.changeLanguage(lang);
+    await salvarIdioma(lang);
+    setModalIdiomaVisivel(false);
+  };
+
+  const idiomasList = [
+    { code: "pt", label: t("login.idioma_pt") },
+    { code: "en", label: t("login.idioma_en") },
+    { code: "es", label: t("login.idioma_es") },
+  ];
 
   /* =========================
       LOGIN (PRESERVADO)
   ========================= */
   const validarUsuario = useCallback(async () => {
     if (!usuario.trim() || !senha.trim()) {
-      showToast("error", "Preencha usuário e senha!");
+      showToast("error", t("login.erro_campos"));
       return;
     }
 
@@ -110,20 +132,20 @@ export default function Home() {
       await executarComToast(
         () => api.post(ENDPOINTS.LOGIN, { login: usuario, senha }),
         {
-          loadingMsg: "Entrando...",
-          successMsg: "Login realizado com sucesso!",
-          errorMsg: "Usuário ou senha inválidos!",
+          loadingMsg: t("login.msg_entrando"),
+          successMsg: t("login.sucesso_login"),
+          errorMsg: t("login.erro_login"),
           onSuccess: (res) => {
             salvarUsuario(res.data);
             salvarToken(res.data.token);
             router.push("/estoque");
           },
-        }
+        },
       );
     } catch (err) {
-    //  console.error("Erro ao fazer login:", err);
+      // Erro já tratado no executor
     }
-  }, [usuario, senha, executarComToast, showToast]);
+  }, [usuario, senha, executarComToast, showToast, t]);
 
   /* =========================
       RECUPERAR SENHA (PRESERVADO)
@@ -134,23 +156,22 @@ export default function Home() {
         await executarComToast(
           () => api.post(ENDPOINTS.RECUPERAR_SENHA_ESQUECIDA, { cpf }),
           {
-            loadingMsg: "Enviando e-mail...",
-            successMsg: "E-mail enviado com sucesso!",
-            errorMsg:
-              "Erro ao enviar e-mail! Cadastro não encontrado ou desativado!",
+            loadingMsg: t("login.msg_enviando_email"),
+            successMsg: t("login.sucesso_email"),
+            errorMsg: t("login.erro_email"),
             onSuccess: () => {
               setModalSenhaVisible(false);
               setModalSucessoVisible(true);
             },
-          }
+          },
         );
-      } catch { }
+      } catch {}
     },
-    [executarComToast]
+    [executarComToast, t],
   );
 
   return (
-    <ImageBackground source={FUNDO} style={styles.fundoRaiz} resizeMode="cover">
+    <ImageBackground source={FUNDO} style={styles.fundoRaiz}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -162,17 +183,20 @@ export default function Home() {
         >
           <View style={styles.header}>
             <Text style={styles.h1}>i9</Text>
-            <Text style={styles.h2}>Boas Vindas</Text>
-            <Text style={styles.h4}>
-              Entre em sua conta e tenha acesso a{"\n"}todas as funcionalidades
-            </Text>
+            <Text style={styles.h2}>{t("login.boas_vindas")}</Text>
+            <Text style={styles.h4}>{t("login.subtitulo")}</Text>
           </View>
 
           <View style={styles.card}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Usuário</Text>
+              <Text style={styles.label}>{t("login.usuario")}</Text>
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color="#999" style={{ marginRight: 10 }} />
+                <Ionicons
+                  name="person-outline"
+                  size={18}
+                  color="#999"
+                  style={{ marginRight: 10 }}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="i9@cpf"
@@ -185,7 +209,7 @@ export default function Home() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Senha</Text>
+              <Text style={styles.label}>{t("login.senha")}</Text>
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
@@ -206,17 +230,18 @@ export default function Home() {
             </View>
 
             <Pressable onPress={validarUsuario} style={styles.botao}>
-              <Text style={styles.textoBotao}>Entrar</Text>
+              <Text style={styles.textoBotao}>{t("login.entrar")}</Text>
             </Pressable>
 
             <Pressable onPress={() => setModalSenhaVisible(true)}>
-              <Text style={styles.linkText}>Você esqueceu sua senha?</Text>
+              <Text style={styles.linkText}>{t("login.esqueceu_senha")}</Text>
             </Pressable>
 
             <View style={styles.footerRow}>
-              <Text style={styles.footerText}>Não possui conta? </Text>
-              <Pressable onPress={() => Alert.alert("Suporte", "Entre em contato com o suporte I9.")}>
-                <Text style={styles.linkTextFooter}>Contate-nos</Text>
+              <Pressable onPress={() => setModalIdiomaVisivel(true)}>
+                <Text style={styles.linkTextFooter}>
+                  {t("login.alterar_idioma")}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -235,11 +260,40 @@ export default function Home() {
         onClose={() => setModalSucessoVisible(false)}
       />
 
-      <Toast
-        visible={toastVisible}
-        message={toastMessage}
-        type={toastType}
-      />
+      {/* MODAL ALTERAR IDIOMA */}
+      {modalIdiomaVisivel && (
+        <Modal
+          titulo={t("login.selecionar_idioma")}
+          onClose={() => setModalIdiomaVisivel(false)}
+        >
+          <View style={styles.modalBody}>
+            {idiomasList.map((lang) => (
+              <Pressable
+                key={lang.code}
+                style={[
+                  styles.idiomaItem,
+                  i18n.language === lang.code && styles.idiomaItemAtivo,
+                ]}
+                onPress={() => handleMudarIdioma(lang.code)}
+              >
+                <Text
+                  style={[
+                    styles.idiomaTexto,
+                    i18n.language === lang.code && styles.idiomaTextoAtivo,
+                  ]}
+                >
+                  {lang.label}
+                </Text>
+                {i18n.language === lang.code && (
+                  <Ionicons name="checkmark-circle" size={24} color="#0F14B8" />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </Modal>
+      )}
+
+      <Toast visible={toastVisible} message={toastMessage} type={toastType} />
     </ImageBackground>
   );
 }
@@ -247,6 +301,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   fundoRaiz: {
     flex: 1,
+    width: "100%",
   },
   scrollContent: {
     flexGrow: 1,
@@ -258,8 +313,19 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   h1: { fontSize: 60, fontWeight: "bold", color: "#FFFFFF" },
-  h2: { fontSize: 32, fontWeight: "bold", color: "#FFFFFF", marginBottom: 10 },
-  h4: { fontSize: 16, color: "#FFFFFF", textAlign: "center", paddingHorizontal: 40 },
+  h2: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  h4: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    textAlign: "center",
+    paddingHorizontal: 40,
+  },
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
@@ -293,4 +359,21 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: "row", justifyContent: "center", marginTop: 30 },
   footerText: { color: "#666", fontSize: 13 },
   linkTextFooter: { color: "#0F14B8", fontSize: 13, fontWeight: "bold" },
+  modalBody: { paddingBottom: 10 },
+  idiomaItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  idiomaItemAtivo: {
+    backgroundColor: "#F0F0FF",
+    borderRadius: 8,
+    borderBottomWidth: 0,
+  },
+  idiomaTexto: { fontSize: 16, color: "#444" },
+  idiomaTextoAtivo: { color: "#0F14B8", fontWeight: "bold" },
 });
