@@ -41,6 +41,7 @@
     "erro_processar": "Erro ao processar arquivo",
     "erro_enviar": "Erro ao enviar arquivo",
     "ler_nota": "Ler nota fiscal",
+    "nota_processada": "Nota fiscal processada!",
     "aponte_camera": "Aponte a câmera ou envie um arquivo Excel",
     "enviar_nota": "Enviar nota fiscal",
     "toque_selecionar": "Toque para selecionar o arquivo Excel"
