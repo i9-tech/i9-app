@@ -19,6 +19,8 @@ export default function Camera() {
   const [urlConsulta, setUrlConsulta] = useState(null);
   const [chaveAtual, setChaveAtual] = useState(null);
   const webViewRef = useRef(null);
+  const [itensNota, setItensNota] = useState([]);
+  const [modalItensVisivel, setModalItensVisivel] = useState(false);
 
   const [toast, setToast] = useState({
     visible: false,
@@ -31,7 +33,6 @@ export default function Camera() {
     global.setHeaderSubTitulo(t("camera.header_subtitulo"));
   }, [t]);
 
-  // 🔥 TOAST
   const mostrarToast = (message, type = "success") => {
     setToast({ visible: true, message, type });
 
@@ -42,41 +43,23 @@ export default function Camera() {
     }
   };
 
-  // 🔥 EXTRAIR CHAVE NFC-E
   const extrairChNFe = (data) => {
     try {
-      console.log("QR LIDO:", data);
-      if (!data) return null;
-
       const texto = String(data);
       const chave44 = texto.match(/\d{44}/);
 
-      if (chave44) {
-        console.log("CHAVE ENCONTRADA:", chave44[0]);
-        return chave44[0];
-      }
-
-      if (texto.includes("p=")) {
-        return texto.split("p=")[1].split("|")[0];
-      }
-
-      if (texto.includes("chNFe=")) {
-        return texto.split("chNFe=")[1].split("&")[0];
-      }
+      if (chave44) return chave44[0];
+      if (texto.includes("p=")) return texto.split("p=")[1].split("|")[0];
+      if (texto.includes("chNFe=")) return texto.split("chNFe=")[1].split("&")[0];
 
       return null;
     } catch (error) {
-      console.log("Erro ao extrair chave:", error);
       return null;
     }
   };
 
-  // 🔥 SEM PERMISSÃO
-  if (!permissao) {
-    return <View style={styles.safe} />;
-  }
+  if (!permissao) return <View style={styles.safe} />;
 
-  // 🔥 MODAL PERMISSÃO
   if (!permissao.granted && modalVisivel) {
     return (
       <Modal titulo={t("camera.permissao_titulo")}>
@@ -84,6 +67,7 @@ export default function Camera() {
           <Text style={styles.textoPermissaoModal}>
             {t("camera.permissao_texto")}
           </Text>
+
           <Pressable
             style={styles.botaoPrincipal}
             onPress={() => {
@@ -100,14 +84,12 @@ export default function Camera() {
     );
   }
 
-  // 🔥 ESCANEAR QR
   const aoEscanearCodigo = async ({ data }) => {
     try {
       if (escaneado) return;
       setEscaneado(true);
 
       const chave = extrairChNFe(data);
-      console.log("CHAVE:", chave);
 
       if (!chave) {
         mostrarToast(t("camera.qr_invalido"), "error");
@@ -118,14 +100,12 @@ export default function Camera() {
       setChaveAtual(chave);
       setUrlConsulta(url);
     } catch (error) {
-      console.log(error);
       mostrarToast(t("camera.erro_abrir_consulta"), "error");
     } finally {
       setTimeout(() => setEscaneado(false), 3000);
     }
   };
 
-  // 🔥 PROCESSAR HTML
   const processarHTML = async (html) => {
     try {
       mostrarToast(t("camera.processando_nota"), "loading");
@@ -137,16 +117,21 @@ export default function Camera() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("NOTA PROCESSADA:", response.data);
+      const itens = response.data?.itens || [];
+
+      setItensNota(itens);
+
+      if (itens.length > 0) {
+        setModalItensVisivel(true);
+      }
+
       mostrarToast(t("camera.nota_processada"), "success");
       setUrlConsulta(null);
     } catch (error) {
-      console.log("ERRO:", error?.response?.data);
       mostrarToast(t("camera.erro_processar"), "error");
     }
   };
 
-  // 🔥 SELECIONAR EXCEL
   const selecionarArquivo = async () => {
     const resultado = await DocumentPicker.getDocumentAsync({
       type: [
@@ -159,9 +144,9 @@ export default function Camera() {
     enviarArquivo(resultado.assets[0]);
   };
 
-  // 🔥 ENVIAR EXCEL
   const enviarArquivo = async (arquivo) => {
     mostrarToast(t("camera.enviando_arquivo"), "loading");
+
     const formData = new FormData();
     formData.append("file", arquivo.file);
 
@@ -174,12 +159,17 @@ export default function Camera() {
         mostrarToast(t("camera.erro_processar"), "error");
       }
     } catch (error) {
-      console.log("ERRO REAL:", error.response?.data);
       mostrarToast(t("camera.erro_enviar"), "error");
     }
   };
 
-  // 🔥 WEBVIEW VIEW
+  const formatarDinheiro = (valor) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(Number(valor || 0));
+  };
+
   if (urlConsulta) {
     return (
       <WebView
@@ -191,9 +181,10 @@ export default function Camera() {
         thirdPartyCookiesEnabled
         startInLoadingState
         onNavigationStateChange={(navState) => {
-          console.log("URL:", navState.url);
-
-          if (navState.url.includes("consulta") && !navState.url.includes("consultaRecaptcha")) {
+          if (
+            navState.url.includes("consulta") &&
+            !navState.url.includes("consultaRecaptcha")
+          ) {
             webViewRef.current?.injectJavaScript(`
               window.ReactNativeWebView.postMessage(document.documentElement.outerHTML);
               true;
@@ -201,12 +192,19 @@ export default function Camera() {
           }
         }}
         onMessage={async (event) => {
-          console.log("HTML RECEBIDO");
           await processarHTML(event.nativeEvent.data);
         }}
       />
     );
   }
+
+  const totalGeral = itensNota.reduce(
+    (acc, item) =>
+      acc +
+      Number(item.valorUnitario || 0) *
+      Number(item.quantidade || 0),
+    0
+  );
 
   return (
     <View style={styles.safe}>
@@ -234,6 +232,66 @@ export default function Camera() {
         <Text style={styles.uploadTitle}>{t("camera.enviar_nota")}</Text>
         <Text style={styles.uploadSubtitle}>{t("camera.toque_selecionar")}</Text>
       </Pressable>
+
+      {modalItensVisivel && (
+        <Modal titulo="Confirmar itens da nota">
+          <View style={{ width: "100%" }}>
+            {itensNota.map((item, index) => {
+              const totalItem =
+                Number(item.valorUnitario || 0) *
+                Number(item.quantidade || 0);
+
+              return (
+                <View
+                  key={index}
+                  style={{
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#eee",
+                  }}
+                >
+                  <Text style={{ fontWeight: "bold", fontSize: 14 }}>
+                    {item.nome}
+                  </Text>
+
+                  <Text style={{ fontSize: 12, color: "#666" }}>
+                    {item.descricao}
+                  </Text>
+
+                  <Text>
+                    Unitário: {formatarDinheiro(item.valorUnitario)}
+                  </Text>
+
+                  <Text style={{ fontSize: 13, fontWeight: "600" }}>
+                    Total: {formatarDinheiro(totalItem)}
+                  </Text>
+                </View>
+              );
+            })}
+
+            <View style={{ marginTop: 15 }}>
+              <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+                Total da Nota: {formatarDinheiro(totalGeral)}
+              </Text>
+            </View>
+
+            <Pressable
+              style={{
+                marginTop: 20,
+                backgroundColor: "#0F14B8",
+                padding: 12,
+                borderRadius: 10,
+                alignItems: "center",
+              }}
+              onPress={() => setModalItensVisivel(false)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "600" }}>
+                Confirmar
+              </Text>
+            </Pressable>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
