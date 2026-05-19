@@ -224,7 +224,7 @@ export default function Camera() {
         <CameraView
           style={StyleSheet.absoluteFillObject}
           facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ["qr", "pdf417"] }}
+          barcodeScannerSettings={{ barcodeTypes: ["qr", "pdf417", "code128"] }}
           onBarcodeScanned={escaneado ? undefined : aoEscanearCodigo}
         />
       </View>
