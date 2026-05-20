@@ -1,15 +1,17 @@
 import { useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal as RNModal } from "react-native";
 import { WebView } from "react-native-webview";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as DocumentPicker from "expo-document-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-
+import DropdownInterativo from "../../../components/Dropdown";
 import api from "../../../provider/api";
-import Modal from "../../../components/Modal";
+import CustomModal from "../../../components/ModalOCR";
 import Toast from "../../../components/Toast";
-import { recuperarToken } from "../../../utils/storage";
+import { recuperarToken, buscarUsuario } from "../../../utils/storage";
+import { TextInput } from "react-native";
+import { ENDPOINTS } from "../../../utils/endpoints";
 
 export default function Camera() {
   const { t } = useTranslation();
@@ -22,6 +24,12 @@ export default function Camera() {
   const [itensNota, setItensNota] = useState([]);
   const [modalItensVisivel, setModalItensVisivel] = useState(false);
 
+
+  const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(null);
+  const [setores, setSetores] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+
   const [toast, setToast] = useState({
     visible: false,
     message: "",
@@ -32,6 +40,31 @@ export default function Camera() {
     global.setHeaderTitulo(t("camera.header_titulo"));
     global.setHeaderSubTitulo(t("camera.header_subtitulo"));
   }, [t]);
+
+
+  useEffect(() => {
+    async function carregarDados() {
+      const user = await buscarUsuario();
+      const tkn = await recuperarToken();
+      setUsuario(user);
+      setToken(tkn);
+
+      if (user && tkn) {
+        api
+          .get(`${ENDPOINTS.SETORES}/${user.userId}`, {
+            headers: { Authorization: `Bearer ${tkn}` },
+          })
+          .then((res) => setSetores(res.data));
+        api
+          .get(`${ENDPOINTS.CATEGORIAS}/${user.userId}`, {
+            headers: { Authorization: `Bearer ${tkn}` },
+          })
+          .then((res) => setCategorias(res.data));
+      }
+    }
+    carregarDados();
+  }, []);
+
 
   const mostrarToast = (message, type = "success") => {
     setToast({ visible: true, message, type });
@@ -62,7 +95,7 @@ export default function Camera() {
 
   if (!permissao.granted && modalVisivel) {
     return (
-      <Modal titulo={t("camera.permissao_titulo")}>
+      <CustomModal titulo={t("camera.permissao_titulo")}>
         <View style={styles.modalContent}>
           <Text style={styles.textoPermissaoModal}>
             {t("camera.permissao_texto")}
@@ -80,7 +113,7 @@ export default function Camera() {
             </Text>
           </Pressable>
         </View>
-      </Modal>
+      </CustomModal>
     );
   }
 
@@ -88,9 +121,17 @@ export default function Camera() {
     try {
       if (escaneado) return;
       setEscaneado(true);
+      const texto = String(data).trim();
 
-      const chave = extrairChNFe(data);
+      // Se for um código de barras de produto comum (EAN-13)
+      if (texto.length === 13 && /^\d+$/.test(texto)) {
+        mostrarToast("Produto identificado: " + texto, "success");
+        // Execute aqui a sua lógica para buscar o produto pelo código de barras
+        return;
+      }
 
+      // Caso contrário, trata como tentativa de ler Nota Fiscal
+      const chave = extrairChNFe(texto);
       if (!chave) {
         mostrarToast(t("camera.qr_invalido"), "error");
         return;
@@ -118,7 +159,6 @@ export default function Camera() {
       );
 
       const itens = response.data?.itens || [];
-
       setItensNota(itens);
 
       if (itens.length > 0) {
@@ -126,7 +166,7 @@ export default function Camera() {
       }
 
       mostrarToast(t("camera.nota_processada"), "success");
-      setUrlConsulta(null);
+      setUrlConsulta(null); // Só fecha se a API processar com sucesso!
     } catch (error) {
       mostrarToast(t("camera.erro_processar"), "error");
     }
@@ -170,34 +210,6 @@ export default function Camera() {
     }).format(Number(valor || 0));
   };
 
-  if (urlConsulta) {
-    return (
-      <WebView
-        ref={webViewRef}
-        source={{ uri: urlConsulta }}
-        javaScriptEnabled
-        domStorageEnabled
-        sharedCookiesEnabled
-        thirdPartyCookiesEnabled
-        startInLoadingState
-        onNavigationStateChange={(navState) => {
-          if (
-            navState.url.includes("consulta") &&
-            !navState.url.includes("consultaRecaptcha")
-          ) {
-            webViewRef.current?.injectJavaScript(`
-              window.ReactNativeWebView.postMessage(document.documentElement.outerHTML);
-              true;
-            `);
-          }
-        }}
-        onMessage={async (event) => {
-          await processarHTML(event.nativeEvent.data);
-        }}
-      />
-    );
-  }
-
   const totalGeral = itensNota.reduce(
     (acc, item) =>
       acc +
@@ -223,8 +235,11 @@ export default function Camera() {
           style={StyleSheet.absoluteFillObject}
           facing="back"
           barcodeScannerSettings={{ barcodeTypes: ["qr", "pdf417", "code128"] }}
-          onBarcodeScanned={escaneado ? undefined : aoEscanearCodigo}
-        />
+          onBarcodeScanned={
+            escaneado || urlConsulta || modalItensVisivel
+              ? undefined
+              : aoEscanearCodigo
+          } />
       </View>
 
       <Pressable style={styles.uploadBox} onPress={selecionarArquivo}>
@@ -233,65 +248,703 @@ export default function Camera() {
         <Text style={styles.uploadSubtitle}>{t("camera.toque_selecionar")}</Text>
       </Pressable>
 
+      <RNModal
+        visible={urlConsulta !== null}
+        animationType="slide"
+        onRequestClose={() => setUrlConsulta(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#fff" }}>
+          <WebView
+            ref={webViewRef}
+            source={{ uri: urlConsulta }}
+            javaScriptEnabled
+            domStorageEnabled
+            sharedCookiesEnabled
+            thirdPartyCookiesEnabled
+            startInLoadingState
+            // IMPORTANTE: Tiramos o injectedJavaScript daqui! Ele não roda mais sozinho ao carregar.
+            onNavigationStateChange={(navState) => {
+              const urlLower = navState.url.toLowerCase();
+
+              // SEFAZ mudou de página e a nova URL NÃO é mais a tela de 'consultarecaptcha'
+              if (urlLower.includes("consulta") && !urlLower.includes("consultarecaptcha")) {
+
+                // Forçamos a extração do HTML apenas quando a URL mudar de fato para o resultado
+                setTimeout(() => {
+                  webViewRef.current?.injectJavaScript(`
+                    window.ReactNativeWebView.postMessage(document.documentElement.outerHTML);
+                    true;
+                  `);
+                }, 1000); // Aguarda 1 segundo para a nova página renderizar os produtos na tela
+              }
+            }}
+            onMessage={async (event) => {
+              // Só recebe o HTML quando o gatilho da URL de resultado for acionado
+              await processarHTML(event.nativeEvent.data);
+            }}
+          />
+
+        </View>
+      </RNModal>
       {modalItensVisivel && (
-        <Modal titulo="Confirmar itens da nota">
-          <View style={{ width: "100%" }}>
-            {itensNota.map((item, index) => {
-              const totalItem =
-                Number(item.valorUnitario || 0) *
-                Number(item.quantidade || 0);
+        <CustomModal
+          titulo="Confirmar Produtos da Nota"
+          modalStyle={{
+            width: "100%",
+            height: "90%",
+            maxHeight: "90%",
+            borderRadius: 28,
+            borderBottomLeftRadius: 0,
+            borderBottomRightRadius: 0,
+            paddingHorizontal: 18,
+            paddingTop: 18,
+            paddingBottom: 24,
+          }}
+        >
+          <View style={{ width: "100%", flex: 1 }}>
+            {/* HEADER */}
+            <View
+              style={{
+                paddingBottom: 14,
+                borderBottomWidth: 1,
+                borderBottomColor: "#F1F1F4",
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 24,
+                  fontWeight: "800",
+                  color: "#1C1C1E",
+                  letterSpacing: -0.8,
+                }}
+              >
+                Revisar Produtos
+              </Text>
 
-              return (
-                <View
-                  key={index}
-                  style={{
-                    paddingVertical: 10,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#eee",
-                  }}
-                >
-                  <Text style={{ fontWeight: "bold", fontSize: 14 }}>
-                    {item.nome}
-                  </Text>
-
-                  <Text style={{ fontSize: 12, color: "#666" }}>
-                    {item.descricao}
-                  </Text>
-
-                  <Text>
-                    Unitário: {formatarDinheiro(item.valorUnitario)}
-                  </Text>
-
-                  <Text style={{ fontSize: 13, fontWeight: "600" }}>
-                    Total: {formatarDinheiro(totalItem)}
-                  </Text>
-                </View>
-              );
-            })}
-
-            <View style={{ marginTop: 15 }}>
-              <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-                Total da Nota: {formatarDinheiro(totalGeral)}
+              <Text
+                style={{
+                  marginTop: 4,
+                  fontSize: 13,
+                  color: "#8E8E93",
+                  lineHeight: 18,
+                }}
+              >
+                Edite os produtos, ajuste os preços e organize os itens no estoque.
               </Text>
             </View>
 
-            <Pressable
-              style={{
-                marginTop: 20,
-                backgroundColor: "#0F14B8",
-                padding: 12,
-                borderRadius: 10,
-                alignItems: "center",
+            {/* LISTA */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingBottom: 40,
               }}
-              onPress={() => setModalItensVisivel(false)}
             >
-              <Text style={{ color: "#fff", fontWeight: "600" }}>
-                Confirmar
-              </Text>
-            </Pressable>
+              {itensNota.map((item, index) => {
+                // 1. ISOLAMENTO DE VARIÁVEIS POR ITEM: Evita replicação visual cruzada
+                const totalItem = Number(item.valorUnitario || 0) * Number(item.quantidade || 0);
+                const qtd = Number(item.quantidade || 0);
+
+                // Tratamento seguro do nome atual deste index específico
+                const nomeExibicao = item.nome
+                  ? item.nome
+                  : (item.descricao ? item.descricao.trim().split(" ")[0] : "");
+
+                const atualizarItem = (campo, novoTexto) => {
+                  const copiaItens = [...itensNota];
+                  copiaItens[index][campo] = novoTexto;
+                  setItensNota(copiaItens);
+                };
+
+                return (
+                  <View
+                    key={index}
+                    style={{
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 26,
+                      padding: 18,
+                      marginBottom: 18,
+
+                      borderWidth: 1.5,
+                      borderColor: "#E3E5EC",
+
+                      shadowColor: "#000",
+                      shadowOffset: {
+                        width: 0,
+                        height: 8,
+                      },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 18,
+                      elevation: 3,
+                    }}
+                  >
+                    {/* CÓDIGO DO PRODUTO */}
+                    {item.codigoProduto ? (
+                      <View
+                        style={{
+                          alignSelf: "flex-start",
+                          backgroundColor: "#FAFAFC",
+                          borderRadius: 18,
+                          borderWidth: 1,
+                          borderColor: "#ECECF2",
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          marginBottom: 10,
+
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <Ionicons
+                          name="barcode-outline"
+                          size={12}
+                          color="#0F14B8"
+                        />
+
+
+
+                        <View>
+
+                          <TextInput
+                            value={item.codigoProduto || ""}
+                            onChangeText={(text) => atualizarItem("descricao", text)}
+                            placeholder="Digite uma descrição detalhada..."
+                            placeholderTextColor="#A9A9B0"
+                            style={{
+                              color: "#0F14B8",
+                              fontSize: 11,
+                              fontWeight: "800",
+                              letterSpacing: 0.3,
+                            }}
+                          />
+                        </View>
+
+                        <Ionicons
+                          name="create-outline"
+                          size={18}
+                          color="#B8B8C2"
+                        />
+
+                      </View>
+                    ) : null}
+
+                    {/* LINHA PRINCIPAL: INPUT DO NOME E COMPONENTE TOTAL LADO A LADO */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      {/* INPUT NOME ÚNICO */}
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: "#F8F9FC",
+                          borderRadius: 18,
+                          borderWidth: 1,
+                          borderColor: "#E7E9F2",
+                          paddingHorizontal: 14,
+                          minHeight: 58,
+                          flexDirection: "row",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Ionicons
+                          name="cube-outline"
+                          size={18}
+                          color="#8E8E93"
+                          style={{ marginRight: 8 }}
+                        />
+
+                        <TextInput
+                          value={nomeExibicao}
+                          onChangeText={(text) => {
+                            atualizarItem("nome", text);
+                          }}
+                          placeholder="Nome do produto"
+                          placeholderTextColor="#A9A9B0"
+                          style={{
+                            flex: 1,
+                            fontSize: 15,
+                            fontWeight: "700",
+                            color: "#1C1C1E",
+                            paddingVertical: 0,
+                          }}
+                        />
+
+                        <Ionicons
+                          name="create-outline"
+                          size={18}
+                          color="#B8B8C2"
+                        />
+                      </View>
+
+                      {/* COMPONENTE TOTAL DO ITEM */}
+                      <View
+                        style={{
+                          width: 118,
+                          minHeight: 58,
+                          backgroundColor: "#0F14B8",
+                          borderRadius: 18,
+                          justifyContent: "center",
+                          paddingHorizontal: 10,
+                          paddingVertical: 10,
+                        }}
+                      >
+                        {/* HEADER */}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-around",
+                            marginBottom: 6,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#C7CBFF",
+                              fontSize: 10,
+                              fontWeight: "800",
+                              letterSpacing: 0.7,
+                            }}
+                          >
+                            TOTAL
+                          </Text>
+
+                          {/* BADGE */}
+                          <View
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: 999,
+                              backgroundColor: "rgba(255,255,255,0.18)",
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Ionicons
+                              name="lock-closed"
+                              size={9}
+                              color="#FFFFFF"
+                            />
+                          </View>
+                        </View>
+
+                        {/* VALOR */}
+                        <Text
+                          style={{
+                            color: "#FFFFFF",
+                            fontSize: 16,
+                            fontWeight: "900",
+                            textAlign: "center",
+                          }}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >
+                          {formatarDinheiro(totalItem)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* INFORMAÇÕES DE CUSTO E QUANTIDADE */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 10,
+                        marginTop: 16,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: "#d4d4d48a",
+                          padding: 14,
+                          borderRadius: 16,
+                        }}
+                      >
+                        {/* HEADER */}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 5,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: "#8E8E93",
+                              fontWeight: "700",
+                            }}
+                          >
+                            CUSTO UNITÁRIO
+                          </Text>
+
+                          {/* BADGE BLOQUEADO */}
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              backgroundColor: "#bfc3cafe",
+                              paddingHorizontal: 7,
+                              paddingVertical: 3,
+                              borderRadius: 999,
+                            }}
+                          >
+                            <Ionicons
+                              name="lock-closed"
+                              size={9}
+                              color="#434343"
+                              style={{ marginRight: 4 }}
+                            />
+
+                            <Text
+                              style={{
+                                fontSize: 9,
+                                color: "#5F6368",
+                                fontWeight: "800",
+                                letterSpacing: 0.3,
+                              }}
+                            >
+                              Não editavel
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            color: "#1C1C1E",
+                            fontWeight: "800",
+                          }}
+                        >
+                          {formatarDinheiro(item.valorUnitario)}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={{
+                          width: 120,
+                          backgroundColor: "#d4d4d48a",
+                          padding: 14,
+                          borderRadius: 16,
+                        }}
+                      >
+                        {/* HEADER */}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 5,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: "#8E8E93",
+                              fontWeight: "700",
+                            }}
+                          >
+                            QUANTIDADE
+                          </Text>
+
+                          {/* BADGE BLOQUEADO */}
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              backgroundColor: "#bfc3cafe",
+                              paddingHorizontal: 3,
+                              paddingVertical: 3,
+                              borderRadius: 999,
+                            }}
+                          >
+                            <Ionicons
+                              name="lock-closed"
+                              size={9}
+                              color="#434343"
+                            />
+
+                          </View>
+                        </View>
+
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            color: "#1C1C1E",
+                            fontWeight: "800",
+                          }}
+                        >
+                          {qtd} un.
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* DESCRIÇÃO INDEPENDENTE */}
+                    <View style={{ marginTop: 18 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: "#636366",
+                          marginBottom: 8,
+                          letterSpacing: 0.4,
+                        }}
+                      >
+                        DESCRIÇÃO
+                      </Text>
+
+                      {/* CONTAINER */}
+                      <View
+                        style={{
+                          backgroundColor: "#FAFAFC",
+                          borderRadius: 18,
+                          borderWidth: 1,
+                          borderColor: "#ECECF2",
+                          paddingHorizontal: 14,
+                          paddingVertical: 12,
+                          position: "relative",
+                        }}
+                      >
+                        <TextInput
+                          value={item.descricao || ""}
+                          onChangeText={(text) => atualizarItem("descricao", text)}
+                          placeholder="Digite uma descrição detalhada..."
+                          placeholderTextColor="#A9A9B0"
+                          multiline
+                          style={{
+                            minHeight: 70,
+                            textAlignVertical: "top",
+                            color: "#3A3A3C",
+                            fontSize: 14,
+                            lineHeight: 20,
+
+                            paddingRight: 34, // ESPAÇO PRO ÍCONE
+                          }}
+                        />
+
+                        {/* ÍCONE DENTRO DO INPUT */}
+                        <Ionicons
+                          name="create-outline"
+                          size={18}
+                          color="#B8B8C2"
+                          style={{
+                            position: "absolute",
+                            top: 14,
+                            right: 14,
+                          }}
+                        />
+                      </View>
+                    </View>
+                    {/* PREÇO VENDA INDEPENDENTE */}
+                    <View style={{ marginTop: 18 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: "#636366",
+                          marginBottom: 8,
+                          letterSpacing: 0.4,
+                        }}
+                      >
+                        PREÇO DE VENDA
+                      </Text>
+
+                      <View
+                        style={{
+                          backgroundColor: "#FAFAFC",
+                          borderRadius: 18,
+                          borderWidth: 1,
+                          borderColor: "#E7E9F2",
+                          paddingHorizontal: 16,
+                          flexDirection: "row",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 20,
+                            fontWeight: "800",
+                            color: "#0F14B8",
+                            marginRight: 8,
+                          }}
+                        >
+                          R$
+                        </Text>
+
+                        <TextInput
+                          value={item.valorVenda || ""}
+                          placeholder="0,00"
+                          placeholderTextColor="#B8B8C2"
+                          keyboardType="numeric"
+                          onChangeText={(text) => atualizarItem("valorVenda", text)}
+                          style={{
+                            flex: 1,
+                            fontSize: 20,
+                            color: "#1C1C1E",
+                            fontWeight: "700",
+                            paddingVertical: 15,
+                          }}
+                        />
+                      </View>
+                    </View>
+
+                    {/* CLASSIFICAÇÃO INDEPENDENTE */}
+                    <View style={{ marginTop: 20 }}>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: "#636366",
+                          marginBottom: 10,
+                          letterSpacing: 0.4,
+                        }}
+                      >
+                        ORGANIZAÇÃO DO ESTOQUE
+                      </Text>
+
+                      <View style={{ flexDirection: "row", gap: 10 }}>
+                        <View style={{ flex: 1 }}>
+                          <DropdownInterativo
+                            label={t("estoque.todos_setores")}
+                            options={[
+                              { id: null, nome: t("estoque.todos_setores") },
+                              ...setores,
+                            ]}
+                            onSelect={(valor) => atualizarItem("setorId", valor.id)}
+                          />
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <DropdownInterativo
+                            label={t("estoque.todas_categorias")}
+                            options={[
+                              { id: null, nome: t("estoque.todas_categorias") },
+                              ...categorias,
+                            ]}
+                            onSelect={(valor) => atualizarItem("categoriaId", valor.id)}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {/* TOTAL GERAL */}
+              <View
+                style={{
+                  backgroundColor: "#0F14B8",
+                  borderRadius: 28,
+                  padding: 22,
+                  marginTop: 6,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#C7CBFF",
+                    fontSize: 12,
+                    fontWeight: "700",
+                    marginBottom: 6,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  TOTAL GERAL
+                </Text>
+
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 34,
+                    fontWeight: "900",
+                    letterSpacing: -1.5,
+                  }}
+                >
+                  {formatarDinheiro(totalGeral)}
+                </Text>
+              </View>
+
+              {/* BOTÃO SALVAR */}
+              <Pressable
+                style={({ pressed }) => ({
+                  marginTop: 18,
+                  backgroundColor: "#0F14B8",
+                  paddingVertical: 18,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.9 : 1,
+                  shadowColor: "#0F14B8",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.18,
+                  shadowRadius: 14,
+                  elevation: 5,
+                })}
+                onPress={async () => {
+                  try {
+                    const payload = itensNota.map((item) => ({
+                      codigoProduto: item.codigoProduto || null,
+                      nome: item.nome || "",
+                      descricao: item.descricao || "",
+                      quantidade: Number(item.quantidade || 0),
+                      valorUnitario: Number(item.valorUnitario || 0),
+                      valorVenda: Number(item.valorVenda || 0),
+
+                      // CASO TENHA NO DROPDOWN
+                      setorId: item.setorId || null,
+                      categoriaId: item.categoriaId || null,
+                    }));
+
+                    console.log("PAYLOAD:", payload);
+
+                    /*
+                    await api.post("/estoque/importar-nota", payload, {
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+                    });
+                    */
+
+                    mostrarToast("Produtos salvos com sucesso", "success");
+
+                    setModalItensVisivel(false);
+                    setItensNota([]);
+                  } catch (error) {
+                    mostrarToast("Erro ao salvar produtos", "error");
+                  }
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color="#FFFFFF"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 16,
+                      fontWeight: "800",
+                      letterSpacing: 0.2,
+                    }}
+                  >
+                    Confirmar e Avançar
+                  </Text>
+                </View>
+              </Pressable>
+            </ScrollView>
           </View>
-        </Modal>
+        </CustomModal>
       )}
+
     </View>
   );
 }
@@ -329,11 +982,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
     marginBottom: 30,
   },
   modalContent: {
@@ -382,4 +1030,24 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 4,
   },
+  dropdownMenu: {
+    position: "absolute",
+    top: 40, right: 0,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    elevation: 10,
+    zIndex: 9999,
+    borderWidth: 1,
+    borderColor: "#e6e6e6",
+    minWidth: 150
+  },
+  menuItem: {
+    padding: 10
+  },
+  dropdownRow: {
+    flexDirection: "row",
+    marginBottom: 10,
+    gap: 8
+  },
+
 });
