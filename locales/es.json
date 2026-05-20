@@ -41,6 +41,7 @@
     "erro_processar": "Error al procesar el archivo",
     "erro_enviar": "Error al enviar el archivo",
     "ler_nota": "Leer factura",
+    "nota_processada": "¡Factura procesada con éxito!",
     "aponte_camera": "Apunte la cámara o envíe un archivo Excel",
     "enviar_nota": "Enviar factura",
     "toque_selecionar": "Toque para seleccionar el archivo Excel"

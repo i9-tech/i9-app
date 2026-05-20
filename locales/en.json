@@ -41,6 +41,7 @@
     "erro_processar": "Error processing file",
     "erro_enviar": "Error sending file",
     "ler_nota": "Read invoice",
+    "nota_processada": "Invoice processed successfully!",
     "aponte_camera": "Point the camera or upload an Excel file",
     "enviar_nota": "Upload invoice",
     "toque_selecionar": "Tap to select the Excel file"
