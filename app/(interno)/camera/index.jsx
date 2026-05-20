@@ -117,6 +117,16 @@ export default function Camera() {
     );
   }
 
+  const formatarMoedaInput = (valor) => {
+    const apenasNumeros = valor.replace(/\D/g, "");
+
+    const numero = Number(apenasNumeros) / 100;
+
+    return numero.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
   const aoEscanearCodigo = async ({ data }) => {
     try {
       if (escaneado) return;
@@ -157,8 +167,15 @@ export default function Camera() {
         { html, chNFe: chaveAtual },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      const itens = (response.data?.itens || []).map((item) => ({
+        ...item,
 
-      const itens = response.data?.itens || [];
+        nome:
+          item.nome ||
+          (item.descricao
+            ? item.descricao.trim().split(" ")[0]
+            : ""),
+      }));
       setItensNota(itens);
 
       if (itens.length > 0) {
@@ -346,11 +363,6 @@ export default function Camera() {
                 const totalItem = Number(item.valorUnitario || 0) * Number(item.quantidade || 0);
                 const qtd = Number(item.quantidade || 0);
 
-                // Tratamento seguro do nome atual deste index específico
-                const nomeExibicao = item.nome
-                  ? item.nome
-                  : (item.descricao ? item.descricao.trim().split(" ")[0] : "");
-
                 const atualizarItem = (campo, novoTexto) => {
                   const copiaItens = [...itensNota];
                   copiaItens[index][campo] = novoTexto;
@@ -410,8 +422,8 @@ export default function Camera() {
 
                           <TextInput
                             value={item.codigoProduto || ""}
-                            onChangeText={(text) => atualizarItem("descricao", text)}
-                            placeholder="Digite uma descrição detalhada..."
+                            onChangeText={(text) => atualizarItem("codigoProduto", text)}
+                            placeholder="Digite um código..."
                             placeholderTextColor="#A9A9B0"
                             style={{
                               color: "#0F14B8",
@@ -462,7 +474,7 @@ export default function Camera() {
                         />
 
                         <TextInput
-                          value={nomeExibicao}
+                          value={item.nome || ""}
                           onChangeText={(text) => {
                             atualizarItem("nome", text);
                           }}
@@ -784,7 +796,11 @@ export default function Camera() {
                           placeholder="0,00"
                           placeholderTextColor="#B8B8C2"
                           keyboardType="numeric"
-                          onChangeText={(text) => atualizarItem("valorVenda", text)}
+                          onChangeText={(text) => {
+                            const valorFormatado = formatarMoedaInput(text);
+
+                            atualizarItem("valorVenda", valorFormatado);
+                          }}
                           style={{
                             flex: 1,
                             fontSize: 20,
@@ -895,7 +911,11 @@ export default function Camera() {
                       descricao: item.descricao || "",
                       quantidade: Number(item.quantidade || 0),
                       valorUnitario: Number(item.valorUnitario || 0),
-                      valorVenda: Number(item.valorVenda || 0),
+                      valorVenda: Number(
+                        String(item.valorVenda || "0")
+                          .replace(/\./g, "")
+                          .replace(",", ".")
+                      ),
 
                       // CASO TENHA NO DROPDOWN
                       setorId: item.setorId || null,
