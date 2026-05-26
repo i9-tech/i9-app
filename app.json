@@ -1,6 +1,6 @@
 {
   "expo": {
-    "scheme": "i9 App",
+    "scheme": ["i9-app"],
     "name": "i9 App",
     "slug": "i9 App",
     "version": "1.0.0",
