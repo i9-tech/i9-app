@@ -228,11 +228,11 @@ function ProdutoCard({
         <View style={styles.inputPrecoContainer}>
           <Text style={styles.inputPrecoPrefixo}>R$</Text>
           <TextInput
-            value={produto.preco_venda}
+            value={produto.valorUnitario}
             placeholder="0,00"
             placeholderTextColor="#B8B8C2"
             keyboardType="numeric"
-            onChangeText={(v) => atualizar("preco_venda", v)}
+            onChangeText={(v) => atualizar("valorUnitario", v)}
             style={styles.inputPreco}
           />
         </View>

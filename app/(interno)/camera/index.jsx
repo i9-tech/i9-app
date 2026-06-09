@@ -244,7 +244,7 @@ export default function Camera() {
   const inicializarProdutos = (produtosRecebidos) =>
     produtosRecebidos.map((p) => ({
       ...p,
-      preco_venda: p.preco_venda != null ? String(p.preco_venda) : "",
+      valorUnitario: p.valorUnitario != null ? String(p.valorUnitario) : "",
       quantidade_min: p.quantidade_min ?? 10,
       quantidade_max: p.quantidade_max ?? 100,
       setor_id: null,
@@ -378,8 +378,8 @@ export default function Camera() {
               descricao: produto.descricao,
               quantidade: produto.quantidade,
               valorCompra: produto.valor_compra || 0,
-              valorUnitario: produto.preco_venda
-                ? parseFloat(produto.preco_venda.replace(",", "."))
+              valorUnitario: produto.valorUnitario
+                ? parseFloat(produto.valorUnitario.replace(",", "."))
                 : 0,
               quantidadeMin: produto.quantidade_min || 10,
               quantidadeMax: produto.quantidade_max || 100,
@@ -1089,7 +1089,7 @@ export default function Camera() {
                             ),
                             quantidadeMin: 10,
                             quantidadeMax: 100,
-                            dataRegistro: new Date().toISOString(),
+                            dataRegistro: new Date().toISOString().split("T")[0],
                             setor: item.setorId
                               ? { id: item.setorId }
                               : setorPadrao
@@ -1100,6 +1100,9 @@ export default function Camera() {
                               : categoriaPadrao
                                 ? { id: categoriaPadrao }
                                 : null,
+                            funcionario: {
+                              id: usuario.userId,
+                            },
                           };
                           return api.post(
                             `/produtos/etl/${usuario.userId}`,
