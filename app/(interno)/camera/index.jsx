@@ -21,8 +21,9 @@ import ModalRevisaoETL from "../../../components/ModalRevisaoETL";
 import DropdownInterativo from "../../../components/Dropdown";
 import { recuperarToken, buscarUsuario } from "../../../utils/storage";
 import { ENDPOINTS } from "../../../utils/endpoints";
+import { enviroments } from "../../../utils/enviroments";
 
-const ETL_URL = "http://localhost:8000/upload";
+const ETL_URL = `${enviroments.etlURL}/upload`;
 
 export default function Camera() {
   const { t } = useTranslation();
@@ -45,6 +46,7 @@ export default function Camera() {
   const [categorias, setCategorias] = useState([]);
   const [carregandoDados, setCarregandoDados] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const processandoRef = useRef(false);
 
   const [toast, setToast] = useState({
     visible: false,
@@ -69,6 +71,12 @@ export default function Camera() {
     carregarDados();
   }, []);
 
+  useEffect(() => {
+    if (modalItensVisivel) {
+      buscarSetoresECategorias();
+    }
+  }, [modalItensVisivel]);
+
   const mostrarToast = useCallback((message, type = "success") => {
     setToast({ visible: true, message, type });
     if (type !== "loading") {
@@ -81,12 +89,20 @@ export default function Camera() {
 
   const extrairChNFe = (data) => {
     try {
-      const texto = String(data);
-      const chave44 = texto.match(/\d{44}/);
+      const texto = String(data).trim();
+
+      // QR Code NFC-e: URL com chave depois de ?p= ou chNFe=
+      const porP = texto.match(/[?&]p=(\d{44})/);
+      if (porP) return porP[1];
+
+      const porChNFe = texto.match(/chNFe=(\d{44})/i);
+      if (porChNFe) return porChNFe[1];
+
+      // PDF417 NF-e: remove tudo que não é número e pega 44 dígitos
+      const apenasNumeros = texto.replace(/\D/g, "");
+      const chave44 = apenasNumeros.match(/\d{44}/);
       if (chave44) return chave44[0];
-      if (texto.includes("p=")) return texto.split("p=")[1].split("|")[0];
-      if (texto.includes("chNFe="))
-        return texto.split("chNFe=")[1].split("&")[0];
+
       return null;
     } catch {
       return null;
@@ -121,19 +137,25 @@ export default function Camera() {
   };
 
   const aoEscanearCodigo = async ({ data }) => {
+    if (processandoRef.current) return;
+    
+    processandoRef.current = true;
     try {
-      if (escaneado || urlConsulta !== null || modalItensVisivel) return;
-      setEscaneado(true);
       const texto = String(data).trim();
 
       if (texto.length === 13 && /^\d+$/.test(texto)) {
-        mostrarToast("Produto identificado: " + texto, "success");
+        mostrarToast(
+          t("camera.produto_identificado", { codigo: texto }),
+          "success",
+        );
+        processandoRef.current = false;
         return;
       }
 
       const chave = extrairChNFe(texto);
       if (!chave) {
         mostrarToast(t("camera.qr_invalido"), "error");
+        processandoRef.current = false;
         return;
       }
 
@@ -142,8 +164,7 @@ export default function Camera() {
       setUrlConsulta(url);
     } catch {
       mostrarToast(t("camera.erro_abrir_consulta"), "error");
-    } finally {
-      setTimeout(() => setEscaneado(false), 3000);
+      processandoRef.current = false;
     }
   };
 
@@ -165,6 +186,7 @@ export default function Camera() {
       if (itens.length > 0) setModalItensVisivel(true);
       mostrarToast(t("camera.nota_processada"), "success");
       setUrlConsulta(null);
+      processandoRef.current = false;
     } catch {
       mostrarToast(t("camera.erro_processar"), "error");
     }
@@ -194,10 +216,10 @@ export default function Camera() {
         listaProdutos.map(async (produto) => {
           try {
             const res = await api.get(
-              `/produtos/busca-exata/${usuario.userId}`,
+              `/produtos/busca-por-codigo/${usuario.userId}`,
               {
                 headers,
-                params: { nome: produto.nome },
+                params: { codigo: produto.codigo },
               },
             );
             const encontrados = res.data;
@@ -222,7 +244,7 @@ export default function Camera() {
   const inicializarProdutos = (produtosRecebidos) =>
     produtosRecebidos.map((p) => ({
       ...p,
-      preco_venda: p.preco_venda != null ? String(p.preco_venda) : "",
+      valorUnitario: p.valorUnitario != null ? String(p.valorUnitario) : "",
       quantidade_min: p.quantidade_min ?? 10,
       quantidade_max: p.quantidade_max ?? 100,
       setor_id: null,
@@ -278,7 +300,7 @@ export default function Camera() {
           return;
         }
 
-        mostrarToast("Verificando produtos existentes...", "loading");
+        mostrarToast(t("camera.verificando_existentes"), "loading");
 
         const produtosBase = inicializarProdutos(produtosRecebidos);
 
@@ -298,8 +320,13 @@ export default function Camera() {
 
         const msg =
           qtdDuplicatas > 0
-            ? `${qtdNovos} novo(s) + ${qtdDuplicatas} já existente(s)`
-            : `${produtosRecebidos.length} produto(s) identificado(s)!`;
+            ? t("camera.resumo_novos_duplicatas", {
+                novos: qtdNovos,
+                duplicatas: qtdDuplicatas,
+              })
+            : t("camera.resumo_identificados", {
+                total: produtosRecebidos.length,
+              });
 
         mostrarToast(msg, "success");
         setTimeout(() => setModalRevisaoVisivel(true), 1500);
@@ -317,12 +344,12 @@ export default function Camera() {
 
   const confirmarProdutos = async () => {
     if (!usuario || !token) {
-      mostrarToast("Usuário não autenticado", "error");
+      mostrarToast(t("camera.usuario_nao_autenticado"), "error");
       return;
     }
 
     setSalvando(true);
-    mostrarToast("Salvando produtos...", "loading");
+    mostrarToast(t("camera.salvando_produtos"), "loading");
 
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -351,8 +378,8 @@ export default function Camera() {
               descricao: produto.descricao,
               quantidade: produto.quantidade,
               valorCompra: produto.valor_compra || 0,
-              valorUnitario: produto.preco_venda
-                ? parseFloat(produto.preco_venda.replace(",", "."))
+              valorUnitario: produto.valorUnitario
+                ? parseFloat(produto.valorUnitario.replace(",", "."))
                 : 0,
               quantidadeMin: produto.quantidade_min || 10,
               quantidadeMax: produto.quantidade_max || 100,
@@ -374,17 +401,20 @@ export default function Camera() {
 
       let msg;
       if (qtdNovos > 0 && qtdDuplicatas > 0) {
-        msg = `${qtdNovos} produto(s) cadastrado(s) e ${qtdDuplicatas} estoque(s) atualizado(s)!`;
+        msg = t("camera.resumo_cadastrados_atualizados", {
+          novos: qtdNovos,
+          duplicatas: qtdDuplicatas,
+        });
       } else if (qtdDuplicatas > 0) {
-        msg = `${qtdDuplicatas} estoque(s) atualizado(s) com sucesso!`;
+        msg = t("camera.resumo_atualizados", { duplicatas: qtdDuplicatas });
       } else {
-        msg = `${qtdNovos} produto(s) cadastrado(s) com sucesso!`;
+        msg = t("camera.resumo_cadastrados", { novos: qtdNovos });
       }
 
       mostrarToast(msg, "success");
     } catch (error) {
       console.log("Erro ao salvar:", error.response?.data ?? error.message);
-      mostrarToast("Erro ao salvar um ou mais produtos", "error");
+      mostrarToast(t("camera.erro_salvar"), "error");
     } finally {
       setSalvando(false);
     }
@@ -426,7 +456,10 @@ export default function Camera() {
       <RNModal
         visible={urlConsulta !== null}
         animationType="slide"
-        onRequestClose={() => setUrlConsulta(null)}
+        onRequestClose={() => {
+          setUrlConsulta(null);
+          processandoRef.current = false;
+        }}
       >
         <View style={{ flex: 1, backgroundColor: "#fff" }}>
           <WebView
@@ -460,7 +493,12 @@ export default function Camera() {
 
       {modalItensVisivel && (
         <CustomModal
-          titulo="Confirmar Produtos da Nota"
+          titulo={t("camera.modal_titulo")}
+          onClose={() => {
+            setModalItensVisivel(false);
+            setItensNota([]);
+            processandoRef.current = false;
+          }}
           modalStyle={{
             width: "100%",
             height: "90%",
@@ -490,7 +528,7 @@ export default function Camera() {
                   letterSpacing: -0.8,
                 }}
               >
-                Revisar Produtos
+                {t("camera.modal_revisao_titulo")}
               </Text>
               <Text
                 style={{
@@ -500,8 +538,7 @@ export default function Camera() {
                   lineHeight: 18,
                 }}
               >
-                Edite os produtos, ajuste os preços e organize os itens no
-                estoque.
+                {t("camera.modal_revisao_subtitulo")}
               </Text>
             </View>
 
@@ -650,7 +687,7 @@ export default function Camera() {
                               letterSpacing: 0.7,
                             }}
                           >
-                            TOTAL
+                            {t("camera.campo_total_geral")}
                           </Text>
                           <View
                             style={{
@@ -710,7 +747,7 @@ export default function Camera() {
                               fontWeight: "700",
                             }}
                           >
-                            CUSTO UNITÁRIO
+                            {t("camera.campo_custo_unitario")}
                           </Text>
                           <View
                             style={{
@@ -736,7 +773,7 @@ export default function Camera() {
                                 letterSpacing: 0.3,
                               }}
                             >
-                              Não editavel
+                              {t("camera.campo_nao_editavel")}
                             </Text>
                           </View>
                         </View>
@@ -773,7 +810,7 @@ export default function Camera() {
                               fontWeight: "700",
                             }}
                           >
-                            QUANTIDADE
+                            {t("camera.campo_quantidade")}
                           </Text>
                           <View
                             style={{
@@ -814,7 +851,7 @@ export default function Camera() {
                           letterSpacing: 0.4,
                         }}
                       >
-                        DESCRIÇÃO
+                        {t("camera.campo_descricao")}
                       </Text>
                       <View
                         style={{
@@ -832,7 +869,7 @@ export default function Camera() {
                           onChangeText={(text) =>
                             atualizarItemNota(index, "descricao", text)
                           }
-                          placeholder="Digite uma descrição detalhada..."
+                          placeholder={t("camera.placeholder_descricao")}
                           placeholderTextColor="#A9A9B0"
                           multiline
                           style={{
@@ -863,7 +900,7 @@ export default function Camera() {
                           letterSpacing: 0.4,
                         }}
                       >
-                        PREÇO DE VENDA
+                        {t("camera.campo_preco_venda")}
                       </Text>
                       <View
                         style={{
@@ -919,7 +956,7 @@ export default function Camera() {
                           letterSpacing: 0.4,
                         }}
                       >
-                        ORGANIZAÇÃO DO ESTOQUE
+                        {t("camera.campo_organizacao")}
                       </Text>
                       <View style={{ flexDirection: "row", gap: 10 }}>
                         <View style={{ flex: 1 }}>
@@ -969,7 +1006,7 @@ export default function Camera() {
                     letterSpacing: 0.5,
                   }}
                 >
-                  TOTAL GERAL
+                  {t("camera.campo_total_geral")}
                 </Text>
                 <Text
                   style={{
@@ -1000,6 +1037,21 @@ export default function Camera() {
                 })}
                 onPress={async () => {
                   try {
+                    mostrarToast(t("camera.verificando_existentes"), "loading");
+
+                    setCarregandoDados(true);
+                    const produtosBase = itensNota.map((item) => ({
+                      ...item,
+                      codigo: item.codigoProduto || null,
+                      duplicata: false,
+                      idProdutoExistente: null,
+                    }));
+
+                    const [itensComDuplicata] = await Promise.all([
+                      verificarDuplicatas(produtosBase),
+                    ]);
+                    setCarregandoDados(false);
+
                     const headers = {
                       Authorization: `Bearer ${token}`,
                       "Content-Type": "application/json",
@@ -1011,49 +1063,86 @@ export default function Camera() {
                       categorias.length > 0 ? categorias[0].id : null;
 
                     await Promise.all(
-                      itensNota.map(async (item) => {
-                        const body = {
-                          codigo: item.codigoProduto || null,
-                          nome: item.nome || "",
-                          descricao: item.descricao || "",
-                          quantidade: Number(item.quantidade || 0),
-                          valorCompra: Number(item.valorUnitario || 0),
-                          valorUnitario: Number(
-                            String(item.valorVenda || "0")
-                              .replace(/\./g, "")
-                              .replace(",", "."),
-                          ),
-                          quantidadeMin: 10,
-                          quantidadeMax: 100,
-                          dataRegistro: new Date().toISOString(),
-                          setor: item.setorId
-                            ? { id: item.setorId }
-                            : setorPadrao
-                              ? { id: setorPadrao }
-                              : null,
-                          categoria: item.categoriaId
-                            ? { id: item.categoriaId }
-                            : categoriaPadrao
-                              ? { id: categoriaPadrao }
-                              : null,
-                        };
-                        return api.post(
-                          `/produtos/etl/${usuario.userId}`,
-                          body,
-                          { headers },
-                        );
+                      itensComDuplicata.map(async (item) => {
+                        if (item.duplicata) {
+                          return api.patch(
+                            `/produtos/quantidade/${item.idProdutoExistente}/${usuario.userId}`,
+                            item.quantidade,
+                            {
+                              headers: {
+                                ...headers,
+                                "Content-Type": "application/json",
+                              },
+                            },
+                          );
+                        } else {
+                          const body = {
+                            codigo: item.codigoProduto || null,
+                            nome: item.nome || "",
+                            descricao: item.descricao || "",
+                            quantidade: Number(item.quantidade || 0),
+                            valorCompra: Number(item.valorUnitario || 0),
+                            valorUnitario: Number(
+                              String(item.valorVenda || "0")
+                                .replace(/\./g, "")
+                                .replace(",", "."),
+                            ),
+                            quantidadeMin: 10,
+                            quantidadeMax: 100,
+                            dataRegistro: new Date().toISOString().split("T")[0],
+                            setor: item.setorId
+                              ? { id: item.setorId }
+                              : setorPadrao
+                                ? { id: setorPadrao }
+                                : null,
+                            categoria: item.categoriaId
+                              ? { id: item.categoriaId }
+                              : categoriaPadrao
+                                ? { id: categoriaPadrao }
+                                : null,
+                            funcionario: {
+                              id: usuario.userId,
+                            },
+                          };
+                          return api.post(
+                            `/produtos/etl/${usuario.userId}`,
+                            body,
+                            { headers },
+                          );
+                        }
                       }),
                     );
 
-                    mostrarToast("Produtos salvos com sucesso", "success");
+                    const qtdDuplicatas = itensComDuplicata.filter(
+                      (p) => p.duplicata,
+                    ).length;
+                    const qtdNovos = itensComDuplicata.length - qtdDuplicatas;
+
+                    let msg;
+                    if (qtdNovos > 0 && qtdDuplicatas > 0) {
+                      msg = t("camera.resumo_cadastrados_atualizados", {
+                        novos: qtdNovos,
+                        duplicatas: qtdDuplicatas,
+                      });
+                    } else if (qtdDuplicatas > 0) {
+                      msg = t("camera.resumo_atualizados", {
+                        duplicatas: qtdDuplicatas,
+                      });
+                    } else {
+                      msg = t("camera.resumo_cadastrados", { novos: qtdNovos });
+                    }
+
+                    mostrarToast(msg, "success");
                     setModalItensVisivel(false);
                     setItensNota([]);
+                    processandoRef.current = false;
                   } catch (error) {
                     console.log(
                       "Erro ao salvar:",
                       error.response?.data ?? error.message,
                     );
-                    mostrarToast("Erro ao salvar produtos", "error");
+                    setCarregandoDados(false);
+                    mostrarToast(t("camera.erro_salvar_produtos"), "error");
                   }
                 }}
               >
@@ -1072,7 +1161,7 @@ export default function Camera() {
                       letterSpacing: 0.2,
                     }}
                   >
-                    Confirmar e Avançar
+                    {t("camera.confirmar_avancar")}
                   </Text>
                 </View>
               </Pressable>

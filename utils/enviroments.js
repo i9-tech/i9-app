@@ -14,4 +14,14 @@ export const enviroments = {
         return process.env.EXPO_PUBLIC_API_BASE_URL_WEB;
     }
   })(),
+  etlURL: (() => {
+    switch (process.env.EXPO_PUBLIC_AMBIENTE) {
+      case "spring-web":
+        return process.env.EXPO_PUBLIC_IA_BASE_URL; // localhost:8000
+      case "spring-mobile":
+        return process.env.EXPO_PUBLIC_ETL_BASE_URL; // 172.x.x.x:8000
+      default:
+        return process.env.EXPO_PUBLIC_IA_BASE_URL;
+    }
+  })(),
 };
